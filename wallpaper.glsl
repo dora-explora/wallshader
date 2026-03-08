@@ -16,17 +16,11 @@ const float TAU = 6.2831853;
 const float PI = TAU / 2.;
 
 float rand(in float seed) {
-    return fract(sin(seed) * 43758.5453);
-    // seed += fract(iTime);
-    // seed = fract(seed * 443.897);
-    // seed *= seed + 33.33;
-    // seed *= seed + seed;
-    // return fract(seed);
-}
-
-vec4 texrand(in vec2 pos) {
-    vec2 samplepos = vec2(rand(pos.x), rand(pos.y));
-    return texture2D(noise, samplepos);
+    // return fract(sin(seed) * 43758.5453);
+    seed = fract(seed * 0.1031);
+    seed *= seed + 33.33;
+    seed *= seed + seed;
+    return fract(seed);
 }
 
 float square(in float n) {
@@ -99,7 +93,7 @@ vec3 normalBox(vec3 pos, vec3 dimensions, float distance) // yoinked from https:
 }
 
 const float RAY_THRESHOLD = 0.01;
-const float MAX_RAY_DIST = 100.;
+const float MAX_RAY_DIST = 40.;
 const int MAX_RAY_STEPS = 50;
 
 vec2 renderBox(vec3 ro, vec3 rd, vec3 dimensions) { // helped by https://michaelwalczyk.com/blog-ray-marching.html
@@ -116,21 +110,20 @@ vec2 renderBox(vec3 ro, vec3 rd, vec3 dimensions) { // helped by https://michael
     return vec2(traveled, distance);
 }
 
-const vec3 CLOUD_DIMENSIONS = vec3(1.5, 0.25, 0.7);
+const vec3 CLOUD_DIMENSIONS = vec3(1., 0.25, 1.);
 
-float renderCloud(vec3 cloudpos, vec3 rd, int secs) {
-    vec3 ro = -cloudpos;
+float renderCloud(vec3 ro, vec3 rd, int secs) {
     vec2 tdbox = renderBox(ro, rd, CLOUD_DIMENSIONS);
     float traveled = tdbox.x;
     float distance = tdbox.y;
     if (distance < RAY_THRESHOLD) {
         vec3 raypos = ro + rd * traveled;
         vec3 normal = normalBox(raypos, CLOUD_DIMENSIONS, distance);
-        float lighttime = ((secs / 86400.) * TAU) - PI/2.;
+        float lighttime = ((float(secs) / 86400.) * TAU) - PI/2.;
         vec3 lightpos = vec3(
             5. - cos(lighttime) * 3.,
             max(sin(lighttime), 0.) * 5.,
-            cos(lighttime) * -10
+            cos(lighttime) * -10.
         );
         float light = light(raypos, normal, lightpos);
         light *= min(sin(lighttime), 0.) * 0.7 + 1.3;
@@ -139,20 +132,33 @@ float renderCloud(vec3 cloudpos, vec3 rd, int secs) {
     return 0.;
 }
 
+const float CLOUD_CHANCE = 0.05;
+
 float renderClouds(vec2 uv, int secs) {
     float result = 0.;
 
     vec2 rduv = uv - 0.8;
     rduv.x *= iResolution.x / iResolution.y;
-    vec3 ro = vec3(iTime * .045, -1.2, -9.);
+    float pos = iTime * 0.3 + 15.;
     vec3 rd = normalize(vec3(rduv, 1.));
 
-    for (int i = 0; i < 10; i++) {
-        ro.x = mod(ro.x + 10., 50.) - 10.;
-        ro.x -= 5.;
-        vec3 nro = normalize(ro);
-        if (nro.x < 0.8388 && nro.x > -0.456) {
-            float cloud = renderCloud(-ro, rd, secs);
+    for (float z = -20.; z <= -9.; z++) {
+        int offset = 0;
+        float x = pos;
+        for (int i = 0; normalize(vec3(x, -1.2, z)).x > -0.5; i++) {
+            vec3 ro = vec3(x, -1.2, z);
+
+            if (normalize(ro).x > 0.9) {
+                float delta = floor(x) - z * -2.;
+                delta = max(delta, 1.);
+                offset += int(delta);
+                x -= delta;
+                i--;
+                continue;
+            }
+            x--;
+            if (rand(mod(z * 1.63287 + float(i + offset), sqrt(2.))) > CLOUD_CHANCE) { continue; }
+            float cloud = renderCloud(ro, rd, secs);
             if (cloud > 0.) { result = cloud; }
         }
     }
@@ -163,7 +169,7 @@ void mainImage(out vec4 o, in vec2 coord) {
     vec2 pos = coord / iResolution.xy;
     ivec2 ipos = ivec2(coord);
     // int secs = int(mod(iDate.w, 86400));
-    int secs = int(mod(iTime * 5000., 86400.));
+    int secs = int(mod(iTime * 1000., 86400.));
 
     vec4 bgcolor = vec4(skycolor(secs), 1.);
     // bgcolor = vec4(vec3(0.), 1.);
