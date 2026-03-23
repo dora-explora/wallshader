@@ -63,10 +63,6 @@ vec3 skycolor(in int secs) { // thank god for desmos
     }
 }
 
-float maxcomp(vec3 v) {
-    return max(v.x, max(v.y, v.z));
-}
-
 float light(vec3 raypos, vec3 normal, vec3 lightpos) {
     vec3 light = normalize(lightpos - raypos);
     float dif = dot(normal, light);
@@ -76,61 +72,59 @@ float light(vec3 raypos, vec3 normal, vec3 lightpos) {
     return dif;
 }
 
-float sdfBox(vec3 pos, vec3 dimensions) { // TYSM INIGO QUILEZ!!!!
-    vec3 delta = abs(pos) - dimensions;
-    return length(max(delta, 0.)) + min(maxcomp(delta), 0.);
-}
-
-vec3 normalBox(vec3 pos, vec3 dimensions, float distance) // yoinked from https://timcoster.com/2020/02/11/raymarching-shader-pt1-glsl/
-{
-    vec2 epsilon = vec2(0.02, 0.);
-    vec3 n = distance - vec3(
-    sdfBox(pos - epsilon.xyy, dimensions),
-    sdfBox(pos - epsilon.yxy, dimensions),
-    sdfBox(pos - epsilon.yyx, dimensions));
-
-    return normalize(n);
-}
-
-const float RAY_THRESHOLD = 0.01;
-const float MAX_RAY_DIST = 40.;
-const int MAX_RAY_STEPS = 50;
-
-vec2 renderBox(vec3 ro, vec3 rd, vec3 dimensions) { // helped by https://michaelwalczyk.com/blog-ray-marching.html
-    float traveled = 0.;
-    float distance = 0.;
-    for (int i = 0; i < MAX_RAY_STEPS; i++) {
-        vec3 pos = ro + rd * traveled;
-
-        distance = sdfBox(pos, dimensions);
-        if (distance < RAY_THRESHOLD || traveled > MAX_RAY_DIST) { break; }
-
-        traveled += distance;
-    }
-    return vec2(traveled, distance);
-}
-
 const vec3 CLOUD_DIMENSIONS = vec3(1., 0.25, 1.);
 
-float renderCloud(vec3 ro, vec3 rd, int secs) {
-    vec2 tdbox = renderBox(ro, rd, CLOUD_DIMENSIONS);
-    float traveled = tdbox.x;
-    float distance = tdbox.y;
-    if (distance < RAY_THRESHOLD) {
-        vec3 raypos = ro + rd * traveled;
-        vec3 normal = normalBox(raypos, CLOUD_DIMENSIONS, distance);
-        float lighttime = ((float(secs) / 86400.) * TAU) - PI/2.;
-        vec3 lightpos = vec3(
-            5. - cos(lighttime) * 3.,
-            max(sin(lighttime), 0.) * 5.,
-            cos(lighttime) * -10.
-        );
-        float mainlight = 0.7 * light(raypos, normal, lightpos);
-        float ambientlight = 0.3 * light(raypos, normal, vec3(5., 2., -5.));
-        float lightfactor = min(sin(lighttime), 0.) * 0.7 + 1.3;
-        return lightfactor * (mainlight + ambientlight);
+vec3 intersectPlane(vec3 ro, vec3 rd, int type) { // type == 0 means x, 1 means y, and 2 means z
+    float os[3]; os[0] = ro.x; os[1] = ro.y; os[2] = ro.z;
+    float ds[3]; ds[0] = rd.x; ds[1] = rd.y; ds[2] = rd.z;
+    float o = os[type];
+    float d = ds[type];
+    return ro - o * rd / d; // thank you ABSOLUTELY NO ONE I FIGURED THIS OUT MYSELF :DDD
+}
+
+vec4 intersectBox(vec3 ro, vec3 rd, vec3 dimensions) { // this function used to be MASSIVE
+    vec3 ros[6];
+    ros[0] = ro; ros[1] = ro - vec2(dimensions.x, 0.).xyy;
+    ros[2] = ro; ros[3] = ro - vec2(dimensions.y, 0.).yxy;
+    ros[4] = ro; ros[5] = ro - vec2(dimensions.z, 0.).yyx;
+    int order[6]; order[0] = 4; order[1] = 2; order[2] = 1; order[3] = 0; order[4] = 3; order[5] = 5;
+    int i;
+    vec3 intersect = vec3(0.);
+    for (int h = 0; h < 6; h++) {
+        i = order[h];
+        intersect = intersectPlane(ros[i], rd, i / 2);
+        if (
+            ((i == 0 || i == 1) && intersect.y > 0. && intersect.z > 0. && intersect.y < dimensions.y && intersect.z < dimensions.z) ||
+            ((i == 2 || i == 3) && intersect.x > 0. && intersect.z > 0. && intersect.x < dimensions.x && intersect.z < dimensions.z) ||
+            ((i == 4 || i == 5) && intersect.x > 0. && intersect.y > 0. && intersect.x < dimensions.x && intersect.y < dimensions.y)
+        ) { return vec4(intersect, i); } // i is the side that collided, for use as a way to determine the normal in renderCloud
     }
-    return 0.;
+    return vec4(0.);
+}
+
+float renderCloud(vec3 ro, vec3 rd, int secs) {
+    vec4 result = intersectBox(ro, rd, CLOUD_DIMENSIONS);
+    if (result == vec4(0.)) { return 0.; }
+    vec3 intersect = result.xyz;
+    vec3 normals[6];
+    normals[0] = vec3(-1., 0., 0.);
+    normals[1] = vec3(1., 0., 0.);
+    normals[2] = vec3(0., -1., 0.);
+    normals[3] = vec3(0., 1., 0.);
+    normals[4] = vec3(0., 0., -1.);
+    normals[5] = vec3(0., 0., 1.);
+    vec3 normal = normals[int(result.w)];
+    return 1.;
+    float lighttime = ((float(secs) / 86400.) * TAU) - PI/2.;
+    vec3 lightpos = vec3(
+        5. - cos(lighttime) * 3.,
+        max(sin(lighttime), 0.) * 5.,
+        cos(lighttime) * -10.
+    );
+    float mainlight = 0.7 * light(intersect, normal, lightpos);
+    float ambientlight = 0.3 * light(intersect, normal, vec3(5., 2., -5.));
+    float lightfactor = min(sin(lighttime), 0.) * 0.8 + 0.2 + 1.;
+    return lightfactor * (mainlight + ambientlight);
 }
 
 const float CLOUD_CHANCE = 0.05;
@@ -146,7 +140,7 @@ float renderClouds(vec2 uv, int secs) {
     for (float z = -20.; z <= -9.; z++) {
         int offset = 0;
         float x = pos;
-        for (int i = 0; normalize(vec3(x, -1.2, z)).x > -0.5; i++) {
+        for (int i = 0; normalize(vec3(x, -1.2, z)).x > -0.4; i++) {
             vec3 ro = vec3(x, -1.2, z);
 
             if (normalize(ro).x > 0.9) {
@@ -170,7 +164,8 @@ void mainImage(out vec4 o, in vec2 coord) {
     vec2 pos = coord / iResolution.xy;
     ivec2 ipos = ivec2(coord);
     // int secs = int(mod(iDate.w, 86400));
-    int secs = int(mod(iTime * 1000., 86400.));
+    // int secs = int(mod(iTime * 5000., 86400.));
+    int secs = 50000;
 
     vec4 bgcolor = vec4(skycolor(secs), 1.);
     // bgcolor = vec4(vec3(0.), 1.);
@@ -178,4 +173,13 @@ void mainImage(out vec4 o, in vec2 coord) {
 
     float cloud = renderClouds(pos, secs);
     if (cloud > 0.) { o = mix(o, vec4(vec3(cloud), 1.), 0.8); }
+
+    vec2 adjpos = vec2(pos.x, pos.y * iResolution.y / iResolution.x);
+    float t = mod(iTime * 0.25, 10.);
+    // vec2 floatpos = vec2(sin(PI * t) + 2.*(t + 1.), 4. - cos(PI * t) - 0.5 * t) * 0.15;
+    vec2 floatpos = vec2(0.1 - 0.1*cos(PI*t - 0.2) + 0.04*t, 0.9 + 0.1*smoothstep(0., 1., mod(-1.*t, 1.)) - 0.1*floor(t));
+    floatpos.y *= iResolution.y / iResolution.x;
+    if (distance(floatpos, adjpos) < 0.0025) {
+        o = mix(o, vec4(0.3, 0.7, 0.1, 1.), 0.8);
+    }
 }
