@@ -82,30 +82,39 @@ vec3 intersectPlane(vec3 ro, vec3 rd, int type) { // type == 0 means x, 1 means 
     return ro - o * rd / d; // thank you ABSOLUTELY NO ONE I FIGURED THIS OUT MYSELF :DDD
 }
 
-vec4 intersectBox(vec3 ro, vec3 rd, vec3 dimensions) { // this function used to be MASSIVE
+vec2 renderCloud(vec3 ro, vec3 rd, int secs) {
     vec3 ros[6];
-    ros[0] = ro; ros[1] = ro - vec2(dimensions.x, 0.).xyy;
-    ros[2] = ro; ros[3] = ro - vec2(dimensions.y, 0.).yxy;
-    ros[4] = ro; ros[5] = ro - vec2(dimensions.z, 0.).yyx;
+    ros[0] = ro; ros[1] = ro - vec2(CLOUD_DIMENSIONS.x, 0.).xyy;
+    ros[2] = ro; ros[3] = ro - vec2(CLOUD_DIMENSIONS.y, 0.).yxy;
+    ros[4] = ro; ros[5] = ro - vec2(CLOUD_DIMENSIONS.z, 0.).yyx;
     int order[6]; order[0] = 4; order[1] = 2; order[2] = 1; order[3] = 0; order[4] = 3; order[5] = 5;
     int i;
+    float delta = 0.;
     vec3 intersect = vec3(0.);
     for (int h = 0; h < 6; h++) {
         i = order[h];
         intersect = intersectPlane(ros[i], rd, i / 2);
-        if (
-            ((i == 0 || i == 1) && intersect.y > 0. && intersect.z > 0. && intersect.y < dimensions.y && intersect.z < dimensions.z) ||
-            ((i == 2 || i == 3) && intersect.x > 0. && intersect.z > 0. && intersect.x < dimensions.x && intersect.z < dimensions.z) ||
-            ((i == 4 || i == 5) && intersect.x > 0. && intersect.y > 0. && intersect.x < dimensions.x && intersect.y < dimensions.y)
-        ) { return vec4(intersect, i); } // i is the side that collided, for use as a way to determine the normal in renderCloud
+        if ((i == 0 || i == 1) && intersect.y > 0. && intersect.z > 0. && intersect.y < CLOUD_DIMENSIONS.y && intersect.z < CLOUD_DIMENSIONS.z) {
+            delta = min(abs(intersect.y - CLOUD_DIMENSIONS.y), abs(intersect.z - CLOUD_DIMENSIONS.z));
+            break;
+        }
+        if ((i == 2 || i == 3) && intersect.x > 0. && intersect.z > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.z < CLOUD_DIMENSIONS.z) {
+            float offset = 0.;
+            if (ro.x < 0.) { offset = CLOUD_DIMENSIONS.x; }
+            delta = min(abs(intersect.x - offset), abs(intersect.z - CLOUD_DIMENSIONS.z));
+            break;
+        }
+        if ((i == 4 || i == 5) && intersect.x > 0. && intersect.y > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.y < CLOUD_DIMENSIONS.y) {
+            float offset = 0.;
+            if (ro.x < 0.) { offset = CLOUD_DIMENSIONS.x; }
+            delta = min(abs(intersect.x - offset), abs(intersect.y - CLOUD_DIMENSIONS.y));
+            break;
+        }
     }
-    return vec4(0.);
-}
+    if (delta == 0.) { return vec2(0.); }
+    delta *= 50. - distance(intersect, ro);
+    // delta = 1.;
 
-float renderCloud(vec3 ro, vec3 rd, int secs) {
-    vec4 result = intersectBox(ro, rd, CLOUD_DIMENSIONS);
-    if (result == vec4(0.)) { return 0.; }
-    vec3 intersect = result.xyz;
     vec3 normals[6];
     normals[0] = vec3(-1., 0., 0.);
     normals[1] = vec3(1., 0., 0.);
@@ -113,8 +122,7 @@ float renderCloud(vec3 ro, vec3 rd, int secs) {
     normals[3] = vec3(0., 1., 0.);
     normals[4] = vec3(0., 0., -1.);
     normals[5] = vec3(0., 0., 1.);
-    vec3 normal = normals[int(result.w)];
-    return 1.;
+    vec3 normal = normals[i];
     float lighttime = ((float(secs) / 86400.) * TAU) - PI/2.;
     vec3 lightpos = vec3(
         5. - cos(lighttime) * 3.,
@@ -124,16 +132,17 @@ float renderCloud(vec3 ro, vec3 rd, int secs) {
     float mainlight = 0.7 * light(intersect, normal, lightpos);
     float ambientlight = 0.3 * light(intersect, normal, vec3(5., 2., -5.));
     float lightfactor = min(sin(lighttime), 0.) * 0.8 + 0.2 + 1.;
-    return lightfactor * (mainlight + ambientlight);
+    return vec2(lightfactor * (mainlight + ambientlight), min(delta, 1.));
 }
 
-const float CLOUD_CHANCE = 0.05;
+const float CLOUD_CHANCE = 0.08;
 
-float renderClouds(vec2 uv, int secs) {
-    float result = 0.;
+vec2 renderClouds(vec2 uv, int secs) {
+    vec2 result = vec2(0.);
 
     vec2 rduv = uv - 0.8;
     rduv.x *= iResolution.x / iResolution.y;
+    rduv *= 0.9;
     float pos = iTime * 0.05 + 15.;
     vec3 rd = normalize(vec3(rduv, 1.));
 
@@ -153,8 +162,8 @@ float renderClouds(vec2 uv, int secs) {
             }
             x--;
             if (rand(mod(z * 1.63287 + float(i + offset), sqrt(2.))) > CLOUD_CHANCE) { continue; }
-            float cloud = renderCloud(ro, rd, secs);
-            if (cloud > 0.) { result = cloud; }
+            vec2 cloud = renderCloud(ro, rd, secs);
+            if (cloud.x > 0.) { result = cloud; }
         }
     }
     return result;
@@ -165,14 +174,16 @@ void mainImage(out vec4 o, in vec2 coord) {
     ivec2 ipos = ivec2(coord);
     // int secs = int(mod(iDate.w, 86400));
     // int secs = int(mod(iTime * 5000., 86400.));
-    int secs = 50000;
+    int secs = 30000;
 
     vec4 bgcolor = vec4(skycolor(secs), 1.);
     // bgcolor = vec4(vec3(0.), 1.);
     o = bgcolor;
 
-    float cloud = renderClouds(pos, secs);
-    if (cloud > 0.) { o = mix(o, vec4(vec3(cloud), 1.), 0.8); }
+    if (pos.y > 0.85) {
+        vec2 cloud = renderClouds(pos, secs);
+        if (cloud.x > 0.) { o = mix(o, vec4(cloud.xxx, 1.), cloud.y * 0.8); }
+    }
 
     vec2 adjpos = vec2(pos.x, pos.y * iResolution.y / iResolution.x);
     float t = mod(iTime * 0.25, 10.);
