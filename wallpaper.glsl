@@ -188,9 +188,9 @@ void mainImage(out vec4 o, in vec2 coord) {
     vec2 adjpos = vec2(pos.x, pos.y * iResolution.y / iResolution.x);
     float t = mod(iTime * 0.25, 10.);
     // vec2 floatpos = vec2(sin(PI * t) + 2.*(t + 1.), 4. - cos(PI * t) - 0.5 * t) * 0.15;
-    vec2 floatpos = vec2(0.1 - 0.1*cos(PI*t - 0.2) + 0.04*t, 0.9 + 0.1*smoothstep(0., 1., mod(-1.*t, 1.)) - 0.1*floor(t));
-    floatpos.y *= iResolution.y / iResolution.x;
-    if (distance(floatpos, adjpos) < 0.0025) {
-        o = mix(o, vec4(0.3, 0.7, 0.1, 1.), 0.8);
-    }
+    // vec2 floatpos = vec2(0.1 - 0.1*cos(PI*t - 0.2) + 0.04*t, 0.9 + 0.1*smoothstep(0., 1., mod(-1.*t, 1.)) - 0.1*floor(t));
+    // floatpos.y *= iResolution.y / iResolution.x;
+    // if (distance(floatpos, adjpos) < 0.0025) {
+        // o = mix(o, vec4(0.3, 0.7, 0.1, 1.), 0.8);
+    // }
 }

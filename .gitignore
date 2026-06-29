@@ -1,1 +1,6 @@
 .wakatime-project
+
+
+# Added by cargo
+
+/target
