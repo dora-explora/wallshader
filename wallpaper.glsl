@@ -1,6 +1,8 @@
 // uniforms:
 // vec3 iResolution
+vec2 iResolution = vec2(1920, 1200);
 // float iTime
+// float iTime = 0.;
 // float iTimeDelta
 // float iFrameRate
 // int iFrame
@@ -10,7 +12,7 @@
 // vec4 iDate
 // float iSampleRate
 
-uniform sampler2D noise;
+// uniform sampler2D noise;
 
 const float TAU = 6.2831853;
 const float PI = TAU / 2.;
@@ -143,7 +145,7 @@ vec2 renderClouds(vec2 uv, int secs) {
     vec2 rduv = uv - 0.8;
     rduv.x *= iResolution.x / iResolution.y;
     rduv *= 0.9;
-    float pos = iTime * 0.05 + 15.;
+    float pos = 15.;
     vec3 rd = normalize(vec3(rduv, 1.));
 
     for (float z = -20.; z <= -9.; z++) {
@@ -169,24 +171,25 @@ vec2 renderClouds(vec2 uv, int secs) {
     return result;
 }
 
-void mainImage(out vec4 o, in vec2 coord) {
-    vec2 pos = coord / iResolution.xy;
+out vec4 o;
+in vec2 coord;
+
+void main() {
+    vec2 pos = coord;
     ivec2 ipos = ivec2(coord);
     // int secs = int(mod(iDate.w, 86400));
     // int secs = int(mod(iTime * 5000., 86400.));
     int secs = 30000;
 
-    vec4 bgcolor = vec4(skycolor(secs), 1.);
-    // bgcolor = vec4(vec3(0.), 1.);
-    o = bgcolor;
+    o = vec4(0.);
 
     if (pos.y > 0.85) {
         vec2 cloud = renderClouds(pos, secs);
         if (cloud.x > 0.) { o = mix(o, vec4(cloud.xxx, 1.), cloud.y * 0.8); }
     }
 
-    vec2 adjpos = vec2(pos.x, pos.y * iResolution.y / iResolution.x);
-    float t = mod(iTime * 0.25, 10.);
+    // vec2 adjpos = vec2(pos.x, pos.y * iResolution.y / iResolution.x);
+    // float t = mod(iTime * 0.25, 10.);
     // vec2 floatpos = vec2(sin(PI * t) + 2.*(t + 1.), 4. - cos(PI * t) - 0.5 * t) * 0.15;
     // vec2 floatpos = vec2(0.1 - 0.1*cos(PI*t - 0.2) + 0.04*t, 0.9 + 0.1*smoothstep(0., 1., mod(-1.*t, 1.)) - 0.1*floor(t));
     // floatpos.y *= iResolution.y / iResolution.x;

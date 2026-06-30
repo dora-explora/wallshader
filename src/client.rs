@@ -1,3 +1,5 @@
+use std::ptr::NonNull;
+
 use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle,
 };
@@ -17,13 +19,13 @@ use smithay_client_toolkit::{
         wlr_layer::*,
     },
 };
-
-use std::ptr::NonNull;
 use wayland_client::{
     Connection, EventQueue, Proxy, QueueHandle, globals::registry_queue_init, protocol::{wl_output, wl_seat, wl_surface},
 };
+use wgpu::{BlendState, ColorTargetState, ColorWrites, CompositeAlphaMode, FragmentState, FrontFace, Instance, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, RenderPipelineDescriptor, RequestAdapterOptions, SurfaceConfiguration, SurfaceTargetUnsafe, TextureUsages, VertexState, include_wgsl};
 
-use log::warn;
+
+use crate::*;
 
 pub fn init() -> (State, EventQueue<State>) {
     let conn = Connection::connect_to_env().unwrap();
@@ -44,7 +46,7 @@ pub fn init() -> (State, EventQueue<State>) {
     layer_surface.wl_surface().commit();
 
     // Initialize wgpu
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
+    let instance = Instance::new(InstanceDescriptor::new_without_display_handle());
 
     // Create the raw window handle for the surface.
     let raw_display_handle = RawDisplayHandle::Wayland(WaylandDisplayHandle::new(
@@ -56,7 +58,7 @@ pub fn init() -> (State, EventQueue<State>) {
 
     let surface = unsafe {
         instance
-            .create_surface_unsafe(wgpu::SurfaceTargetUnsafe::RawHandle {
+            .create_surface_unsafe(SurfaceTargetUnsafe::RawHandle {
                 raw_display_handle: Some(raw_display_handle),
                 raw_window_handle,
             })
@@ -64,7 +66,7 @@ pub fn init() -> (State, EventQueue<State>) {
     };
 
     // Pick a supported adapter
-    let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
+    let adapter = pollster::block_on(instance.request_adapter(&RequestAdapterOptions {
         compatible_surface: Some(&surface),
         ..Default::default()
     }))
@@ -72,6 +74,51 @@ pub fn init() -> (State, EventQueue<State>) {
 
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))
         .expect("Failed to request device");
+
+    let vertex_shader = device.create_shader_module(include_wgsl!("vertex.wgsl"));
+    let fragment_shader = device.create_shader_module(include_wgsl!("wallpaper.wgsl"));
+    let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        label: None,
+        bind_group_layouts: &[],
+        immediate_size: 0,
+    });
+    let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+        label: None,
+        layout: Some(&render_pipeline_layout),
+        vertex: VertexState {
+            module: &vertex_shader,
+            entry_point: Some("vs_main"),
+            buffers: &[],
+            compilation_options: Default::default()
+        },
+        fragment: Some(FragmentState {
+            module: &fragment_shader,
+            entry_point: Some("main"),
+            targets: &[Some(ColorTargetState {
+                format: surface.get_capabilities(&adapter).formats[0],
+                blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: ColorWrites::ALL,
+            })],
+            compilation_options: Default::default()
+        }),
+        primitive: PrimitiveState {
+            topology: PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: PolygonMode::Fill,
+            unclipped_depth: false,
+            conservative: false,
+        },
+        depth_stencil: None,
+        multisample: MultisampleState {
+            count: 1,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+        multiview_mask: None,
+        cache: None
+    });
 
     return (State {
         registry_state: RegistryState::new(&globals),
@@ -89,25 +136,8 @@ pub fn init() -> (State, EventQueue<State>) {
         device,
         queue,
         surface,
+        render_pipeline,
     }, event_queue);
-}
-
-pub struct State {
-    registry_state: RegistryState,
-    seat_state: SeatState,
-    output_state: OutputState,
-
-    pub layer_shell: LayerShell,
-    pub layer_surface: LayerSurface,
-
-    pub exit: bool,
-    pub width: u32,
-    pub height: u32,
-
-    pub adapter: wgpu::Adapter,
-    pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
-    pub surface: wgpu::Surface<'static>,
 }
 
 impl CompositorHandler for State {
@@ -213,62 +243,23 @@ impl LayerShellHandler for State {
         let adapter = &self.adapter;
         let surface = &self.surface;
         let device = &self.device;
-        let queue = &self.queue;
 
         let cap = surface.get_capabilities(&adapter);
-        let surface_config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+        let surface_config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
             format: cap.formats[0],
             view_formats: vec![cap.formats[0]],
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            alpha_mode: CompositeAlphaMode::Auto,
             width: self.width,
             height: self.height,
             desired_maximum_frame_latency: 2,
             // Wayland is inherently a mailbox system.
-            present_mode: wgpu::PresentMode::Mailbox,
+            present_mode: PresentMode::Mailbox,
         };
 
-        // this is the ONE part i wrote
-        let surface_texture;
-        surface.configure(&self.device, &surface_config);
-        loop {
-            match surface.get_current_texture() {
-                wgpu::CurrentSurfaceTexture::Success(s) => { surface_texture = s; break; },
-                wgpu::CurrentSurfaceTexture::Suboptimal(s) => { surface.configure(&self.device, &surface_config); surface_texture = s; break; },
-                wgpu::CurrentSurfaceTexture::Timeout => warn!("Timeout while trying to configure surface"), // just tries again
-                wgpu::CurrentSurfaceTexture::Occluded => warn!("Surface occluded while trying to configure surface"), // also just tries again
-                wgpu::CurrentSurfaceTexture::Outdated => { surface.configure(&self.device, &surface_config); },
-                wgpu::CurrentSurfaceTexture::Lost => panic!("Surface lost while trying to configure surface"),
-                wgpu::CurrentSurfaceTexture::Validation => panic!("Validation error while trying to configure surface")
-            }
-        }
+        surface.configure(device, &surface_config);
 
-        let texture_view =
-            surface_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-
-        let mut encoder = device.create_command_encoder(&Default::default());
-        {
-            let _renderpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: None,
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &texture_view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLUE),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-        }
-
-        // Submit the command in the queue to execute
-        queue.submit(Some(encoder.finish()));
-        surface_texture.present();
+        self.render().expect("render failed");
     }
 }
 

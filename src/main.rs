@@ -1,8 +1,35 @@
 use std::{thread::sleep, time::Duration};
 
 use log::info;
+use smithay_client_toolkit::{
+    output::OutputState,
+    registry::RegistryState,
+    seat::SeatState,
+    shell::wlr_layer::{LayerShell, LayerSurface},
+};
+use wgpu::{Adapter, Device, Queue, RenderPipeline, Surface};
 
 mod client;
+mod render;
+
+struct State {
+    registry_state: RegistryState,
+    seat_state: SeatState,
+    output_state: OutputState,
+
+    layer_shell: LayerShell,
+    layer_surface: LayerSurface,
+
+    exit: bool,
+    width: u32,
+    height: u32,
+
+    adapter: Adapter,
+    device: Device,
+    queue: Queue,
+    surface: Surface<'static>,
+    render_pipeline: RenderPipeline,
+}
 
 fn main() {
     env_logger::init();
