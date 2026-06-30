@@ -3,18 +3,18 @@ use raw_window_handle::{
 };
 use smithay_client_toolkit::{
     compositor::{CompositorHandler, CompositorState},
-    delegate_compositor, delegate_output, delegate_registry, delegate_seat, delegate_xdg_shell,
-    delegate_xdg_window,
+    delegate_compositor,
+    delegate_layer,
+    delegate_output,
+    delegate_registry,
+    delegate_seat,
     output::{OutputHandler, OutputState},
     registry::{ProvidesRegistryState, RegistryState},
     registry_handlers,
     seat::{Capability, SeatHandler, SeatState},
     shell::{
-        xdg::{
-            window::{Window, WindowConfigure, WindowDecorations, WindowHandler},
-            XdgShell,
-        },
         WaylandSurface,
+        wlr_layer::*,
     },
 };
 
@@ -25,24 +25,23 @@ use wayland_client::{
 
 use log::warn;
 
-pub fn init() -> (Wgpu, EventQueue<Wgpu>) {
+pub fn init() -> (State, EventQueue<State>) {
     let conn = Connection::connect_to_env().unwrap();
     let (globals, event_queue) = registry_queue_init(&conn).unwrap();
     let qh = event_queue.handle();
 
-    // Initialize xdg_shell handlers so we can select the correct adapter
     let compositor_state =
         CompositorState::bind(&globals, &qh).expect("wl_compositor not available");
-    let xdg_shell_state = XdgShell::bind(&globals, &qh).expect("xdg shell not available");
-
     let surface = compositor_state.create_surface(&qh);
-    // Create the window for adapter selection
-    let window = xdg_shell_state.create_window(surface, WindowDecorations::ServerDefault, &qh);
-    window.set_title("wgpu wayland window");
-    // GitHub does not let projects use the `org.github` domain but the `io.github` domain is fine.
-    window.set_app_id("io.github.smithay.client-toolkit.WgpuExample");
-    window.set_min_size(Some((256, 256)));
-    window.commit();
+
+    let layer_shell = LayerShell::bind(&globals, &qh).expect("wlr_layer_shell_v1 not available");
+    let layer_surface = layer_shell.create_layer_surface(&qh, surface, Layer::Background, Some("wallshader"), None);
+
+    layer_surface.set_anchor(Anchor::all());
+    layer_surface.set_size(0, 0);
+    layer_surface.set_exclusive_zone(-1);
+    layer_surface.set_keyboard_interactivity(KeyboardInteractivity::None);
+    layer_surface.wl_surface().commit();
 
     // Initialize wgpu
     let instance = wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
@@ -52,7 +51,7 @@ pub fn init() -> (Wgpu, EventQueue<Wgpu>) {
         NonNull::new(conn.backend().display_ptr() as *mut _).unwrap(),
     ));
     let raw_window_handle = RawWindowHandle::Wayland(WaylandWindowHandle::new(
-        NonNull::new(window.wl_surface().id().as_ptr() as *mut _).unwrap(),
+        NonNull::new(layer_surface.wl_surface().id().as_ptr() as *mut _).unwrap(),
     ));
 
     let surface = unsafe {
@@ -74,31 +73,36 @@ pub fn init() -> (Wgpu, EventQueue<Wgpu>) {
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))
         .expect("Failed to request device");
 
-    return (Wgpu {
+    return (State {
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
         output_state: OutputState::new(&globals, &qh),
 
+        layer_shell,
+        layer_surface,
+
         exit: false,
         width: 256,
         height: 256,
-        window,
-        device,
-        surface,
+
         adapter,
+        device,
         queue,
+        surface,
     }, event_queue);
 }
 
-pub struct Wgpu {
+pub struct State {
     registry_state: RegistryState,
     seat_state: SeatState,
     output_state: OutputState,
 
+    pub layer_shell: LayerShell,
+    pub layer_surface: LayerSurface,
+
     pub exit: bool,
     pub width: u32,
     pub height: u32,
-    pub window: Window,
 
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
@@ -106,7 +110,7 @@ pub struct Wgpu {
     pub surface: wgpu::Surface<'static>,
 }
 
-impl CompositorHandler for Wgpu {
+impl CompositorHandler for State {
     fn scale_factor_changed(
         &mut self,
         _conn: &Connection,
@@ -157,7 +161,7 @@ impl CompositorHandler for Wgpu {
     }
 }
 
-impl OutputHandler for Wgpu {
+impl OutputHandler for State {
     fn output_state(&mut self) -> &mut OutputState {
         &mut self.output_state
     }
@@ -187,8 +191,8 @@ impl OutputHandler for Wgpu {
     }
 }
 
-impl WindowHandler for Wgpu {
-    fn request_close(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &Window) {
+impl LayerShellHandler for State {
+    fn closed(&mut self, _: &Connection, _: &QueueHandle<Self>, _: &LayerSurface) {
         self.exit = true;
     }
 
@@ -196,13 +200,15 @@ impl WindowHandler for Wgpu {
         &mut self,
         _conn: &Connection,
         _qh: &QueueHandle<Self>,
-        _window: &Window,
-        configure: WindowConfigure,
+        _surface: &LayerSurface,
+        configure: LayerSurfaceConfigure,
         _serial: u32,
     ) {
-        let (new_width, new_height) = configure.new_size;
-        self.width = new_width.map_or(256, |v| v.get());
-        self.height = new_height.map_or(256, |v| v.get());
+        let new_size = configure.new_size;
+        if new_size.0 > 0 && new_size.1 > 0 {
+            self.width = new_size.0;
+            self.height = new_size.1;
+        }
 
         let adapter = &self.adapter;
         let surface = &self.surface;
@@ -222,6 +228,7 @@ impl WindowHandler for Wgpu {
             present_mode: wgpu::PresentMode::Mailbox,
         };
 
+        // this is the ONE part i wrote
         let surface_texture;
         surface.configure(&self.device, &surface_config);
         loop {
@@ -265,7 +272,7 @@ impl WindowHandler for Wgpu {
     }
 }
 
-impl SeatHandler for Wgpu {
+impl SeatHandler for State {
     fn seat_state(&mut self) -> &mut SeatState {
         &mut self.seat_state
     }
@@ -293,17 +300,16 @@ impl SeatHandler for Wgpu {
     fn remove_seat(&mut self, _: &Connection, _: &QueueHandle<Self>, _: wl_seat::WlSeat) {}
 }
 
-delegate_compositor!(Wgpu);
-delegate_output!(Wgpu);
+delegate_compositor!(State);
+delegate_output!(State);
 
-delegate_seat!(Wgpu);
+delegate_seat!(State);
 
-delegate_xdg_shell!(Wgpu);
-delegate_xdg_window!(Wgpu);
+delegate_layer!(State);
 
-delegate_registry!(Wgpu);
+delegate_registry!(State);
 
-impl ProvidesRegistryState for Wgpu {
+impl ProvidesRegistryState for State {
     fn registry(&mut self) -> &mut RegistryState {
         &mut self.registry_state
     }

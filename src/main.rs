@@ -1,21 +1,29 @@
-mod display;
+use std::{thread::sleep, time::Duration};
+
+use log::info;
+
+mod client;
 
 fn main() {
     env_logger::init();
 
-    let (mut wgpu, mut event_queue) = display::init();
+    let (mut state, mut event_queue) = client::init();
 
     // We don't draw immediately, the configure will notify us when to first draw.
     loop {
-        event_queue.blocking_dispatch(&mut wgpu).unwrap();
+        if event_queue.blocking_dispatch(&mut state).expect("Dispatch error for ") > 0 {
+            info!("processed event");
+        }
 
-        if wgpu.exit {
+        sleep(Duration::from_millis(100));
+
+        if state.exit {
             println!("exiting example");
             break;
         }
     }
 
-    // On exit we must destroy the surface before the window is destroyed.
-    drop(wgpu.surface);
-    drop(wgpu.window);
+    drop(state.surface);
+    drop(state.layer_surface);
+    drop(state.layer_shell);
 }
