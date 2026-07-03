@@ -6,36 +6,43 @@ const TAU: f32 = 6.2831855f;
 const PI: f32 = 3.1415927f;
 const CLOUD_DIMENSIONS: vec3<f32> = vec3<f32>(1f, 0.25f, 1f);
 const CLOUD_CHANCE: f32 = 0.08f;
+const NUMGRASSES: i32 = 200i;
+const GRASSOFFSETWIDTH: f32 = 0.003f;
+const GRASSOFFSETHEIGHT: f32 = 0.025f;
+const GRASSWIDTH: f32 = 0.0035f;
+const GRASSHEIGHT: f32 = 0.03f;
 
 var<private> o_1: vec4<f32>;
 var<private> coord_1: vec2<f32>;
 var<private> RESOLUTION_1: vec2<f32>;
 var<private> TIME_1: f32;
+var<private> RAND_1: f32;
+var<private> NOISE_1: f32;
 
 fn rand(seed: f32) -> f32 {
     var seed_1: f32;
 
     seed_1 = seed;
-    let _e8 = seed_1;
-    seed_1 = fract((_e8 * 0.1031f));
-    let _e12 = seed_1;
-    let _e13 = seed_1;
-    seed_1 = (_e12 * (_e13 + 33.33f));
-    let _e17 = seed_1;
-    let _e18 = seed_1;
+    let _e10 = seed_1;
+    seed_1 = fract((_e10 * 0.1031f));
+    let _e14 = seed_1;
+    let _e15 = seed_1;
+    seed_1 = (_e14 * (_e15 + 33.33f));
     let _e19 = seed_1;
-    seed_1 = (_e17 * (_e18 + _e19));
-    let _e22 = seed_1;
-    return fract(_e22);
+    let _e20 = seed_1;
+    let _e21 = seed_1;
+    seed_1 = (_e19 * (_e20 + _e21));
+    let _e24 = seed_1;
+    return fract(_e24);
 }
 
 fn square(n: f32) -> f32 {
     var n_1: f32;
 
     n_1 = n;
-    let _e8 = n_1;
-    let _e9 = n_1;
-    return (_e8 * _e9);
+    let _e10 = n_1;
+    let _e11 = n_1;
+    return (_e10 * _e11);
 }
 
 fn skycolor(secs: i32) -> vec3<f32> {
@@ -61,106 +68,106 @@ fn skycolor(secs: i32) -> vec3<f32> {
     var f_2: f32 = 0.2f;
 
     secs_1 = secs;
-    let _e8 = secs_1;
-    if (_e8 < 28800i) {
+    let _e10 = secs_1;
+    if (_e10 < 28800i) {
         {
-            let _e11 = secs_1;
-            x = (f32(_e11) / 28800f);
-            let _e17 = x;
-            r = ((0.3f * _e17) + 0.35f);
-            let _e23 = x;
-            g = ((0.7f * _e23) + 0.15f);
-            let _e30 = x;
-            let _e33 = square((_e30 - 1f));
-            b = (0.9f - (0.8f * _e33));
-            let _e37 = x;
-            f = (_e37 + 0.82574f);
-            let _e41 = f;
+            let _e13 = secs_1;
+            x = (f32(_e13) / 28800f);
+            let _e19 = x;
+            r = ((0.3f * _e19) + 0.35f);
+            let _e25 = x;
+            g = ((0.7f * _e25) + 0.15f);
+            let _e32 = x;
+            let _e35 = square((_e32 - 1f));
+            b = (0.9f - (0.8f * _e35));
+            let _e39 = x;
+            f = (_e39 + 0.82574f);
             let _e43 = f;
-            f = (_e41 * (0.3f * _e43));
-            let _e46 = f;
-            let _e47 = r;
-            let _e48 = g;
-            let _e49 = b;
-            return (_e46 * vec3<f32>(_e47, _e48, _e49));
+            let _e45 = f;
+            f = (_e43 * (0.3f * _e45));
+            let _e48 = f;
+            let _e49 = r;
+            let _e50 = g;
+            let _e51 = b;
+            return (_e48 * vec3<f32>(_e49, _e50, _e51));
         }
     } else {
-        let _e52 = secs_1;
-        if (_e52 < 57600i) {
+        let _e54 = secs_1;
+        if (_e54 < 57600i) {
             {
-                let _e55 = secs_1;
-                x_1 = (f32((_e55 - 28800i)) / 28880f);
-                let _e64 = x_1;
-                r_1 = (0.65f - (0.3f * _e64));
-                let _e69 = x_1;
-                if (_e69 < 0.4f) {
+                let _e57 = secs_1;
+                x_1 = (f32((_e57 - 28800i)) / 28880f);
+                let _e66 = x_1;
+                r_1 = (0.65f - (0.3f * _e66));
+                let _e71 = x_1;
+                if (_e71 < 0.4f) {
                     {
-                        let _e74 = x_1;
-                        let _e77 = square((_e74 - 0.4f));
-                        g_1 = (0.898f - (0.3f * _e77));
+                        let _e76 = x_1;
+                        let _e79 = square((_e76 - 0.4f));
+                        g_1 = (0.898f - (0.3f * _e79));
                     }
                 } else {
                     {
-                        let _e81 = x_1;
-                        let _e84 = square((_e81 - 0.4f));
-                        g_1 = (0.898f - _e84);
+                        let _e83 = x_1;
+                        let _e86 = square((_e83 - 0.4f));
+                        g_1 = (0.898f - _e86);
                     }
                 }
-                let _e87 = x_1;
-                b_1 = ((0.1f * _e87) + 0.9f);
-                let _e92 = r_1;
-                let _e93 = g_1;
-                let _e94 = b_1;
-                return vec3<f32>(_e92, _e93, _e94);
+                let _e89 = x_1;
+                b_1 = ((0.1f * _e89) + 0.9f);
+                let _e94 = r_1;
+                let _e95 = g_1;
+                let _e96 = b_1;
+                return vec3<f32>(_e94, _e95, _e96);
             }
         } else {
-            let _e96 = secs_1;
-            if (_e96 < 72000i) {
+            let _e98 = secs_1;
+            if (_e98 < 72000i) {
                 {
-                    let _e99 = secs_1;
-                    x_2 = (f32((_e99 - 57600i)) / 14400f);
-                    let _e108 = x_2;
-                    let _e110 = square((5f * _e108));
-                    r_2 = min(1f, (_e110 + 0.35f));
-                    let _e118 = x_2;
-                    g_2 = max(0f, (0.538f - (0.6f * _e118)));
-                    let _e124 = x_2;
-                    b_2 = (0.2f / (_e124 + 0.2f));
-                    let _e131 = x_2;
-                    f_1 = min(1f, (1.2f - _e131));
-                    let _e135 = f_1;
-                    let _e136 = r_2;
-                    let _e137 = g_2;
-                    let _e138 = b_2;
-                    return (_e135 * vec3<f32>(_e136, _e137, _e138));
+                    let _e101 = secs_1;
+                    x_2 = (f32((_e101 - 57600i)) / 14400f);
+                    let _e110 = x_2;
+                    let _e112 = square((5f * _e110));
+                    r_2 = min(1f, (_e112 + 0.35f));
+                    let _e120 = x_2;
+                    g_2 = max(0f, (0.538f - (0.6f * _e120)));
+                    let _e126 = x_2;
+                    b_2 = (0.2f / (_e126 + 0.2f));
+                    let _e133 = x_2;
+                    f_1 = min(1f, (1.2f - _e133));
+                    let _e137 = f_1;
+                    let _e138 = r_2;
+                    let _e139 = g_2;
+                    let _e140 = b_2;
+                    return (_e137 * vec3<f32>(_e138, _e139, _e140));
                 }
             } else {
                 {
-                    let _e141 = secs_1;
-                    x_3 = (f32((_e141 - 72000i)) / 14400f);
-                    let _e150 = x_3;
-                    r_3 = (1f - (0.65f * _e150));
-                    let _e155 = x_3;
-                    g_3 = (0.15f * _e155);
-                    let _e159 = x_3;
-                    if (_e159 < 0.77f) {
+                    let _e143 = secs_1;
+                    x_3 = (f32((_e143 - 72000i)) / 14400f);
+                    let _e152 = x_3;
+                    r_3 = (1f - (0.65f * _e152));
+                    let _e157 = x_3;
+                    g_3 = (0.15f * _e157);
+                    let _e161 = x_3;
+                    if (_e161 < 0.77f) {
                         {
-                            let _e165 = x_3;
-                            let _e169 = square(((2f * _e165) - 1.1f));
-                            b_3 = (1f - (0.69f * _e169));
+                            let _e167 = x_3;
+                            let _e171 = square(((2f * _e167) - 1.1f));
+                            b_3 = (1f - (0.69f * _e171));
                         }
                     } else {
                         {
-                            let _e174 = x_3;
-                            let _e178 = square(((3f * _e174) - 2.1f));
-                            b_3 = (0.91f - _e178);
+                            let _e176 = x_3;
+                            let _e180 = square(((3f * _e176) - 2.1f));
+                            b_3 = (0.91f - _e180);
                         }
                     }
-                    let _e182 = f_2;
-                    let _e183 = r_3;
-                    let _e184 = g_3;
-                    let _e185 = b_3;
-                    return (_e182 * vec3<f32>(_e183, _e184, _e185));
+                    let _e184 = f_2;
+                    let _e185 = r_3;
+                    let _e186 = g_3;
+                    let _e187 = b_3;
+                    return (_e184 * vec3<f32>(_e185, _e186, _e187));
                 }
             }
         }
@@ -177,20 +184,20 @@ fn light(raypos: vec3<f32>, normal: vec3<f32>, lightpos: vec3<f32>) -> f32 {
     raypos_1 = raypos;
     normal_1 = normal;
     lightpos_1 = lightpos;
-    let _e12 = lightpos_1;
-    let _e13 = raypos_1;
-    light_1 = normalize((_e12 - _e13));
-    let _e17 = normal_1;
-    let _e18 = light_1;
-    dif = dot(_e17, _e18);
-    let _e21 = dif;
-    dif = max(_e21, 0f);
-    let _e24 = dif;
-    dif = (_e24 * 0.5f);
-    let _e27 = dif;
-    dif = (_e27 + 0.5f);
-    let _e30 = dif;
-    return _e30;
+    let _e14 = lightpos_1;
+    let _e15 = raypos_1;
+    light_1 = normalize((_e14 - _e15));
+    let _e19 = normal_1;
+    let _e20 = light_1;
+    dif = dot(_e19, _e20);
+    let _e23 = dif;
+    dif = max(_e23, 0f);
+    let _e26 = dif;
+    dif = (_e26 * 0.5f);
+    let _e29 = dif;
+    dif = (_e29 + 0.5f);
+    let _e32 = dif;
+    return _e32;
 }
 
 fn intersectPlane(ro: vec3<f32>, rd: vec3<f32>, type_19: i32) -> vec3<f32> {
@@ -205,29 +212,29 @@ fn intersectPlane(ro: vec3<f32>, rd: vec3<f32>, type_19: i32) -> vec3<f32> {
     ro_1 = ro;
     rd_1 = rd;
     type_20 = type_19;
-    let _e16 = ro_1;
-    os[0i] = _e16.x;
-    let _e20 = ro_1;
-    os[1i] = _e20.y;
-    let _e24 = ro_1;
-    os[2i] = _e24.z;
-    let _e29 = rd_1;
-    ds[0i] = _e29.x;
-    let _e33 = rd_1;
-    ds[1i] = _e33.y;
-    let _e37 = rd_1;
-    ds[2i] = _e37.z;
-    let _e39 = type_20;
-    let _e41 = os[_e39];
-    o = _e41;
-    let _e43 = type_20;
-    let _e45 = ds[_e43];
-    d = _e45;
-    let _e47 = ro_1;
-    let _e48 = o;
-    let _e49 = rd_1;
-    let _e51 = d;
-    return (_e47 - ((_e48 * _e49) / vec3(_e51)));
+    let _e18 = ro_1;
+    os[0i] = _e18.x;
+    let _e22 = ro_1;
+    os[1i] = _e22.y;
+    let _e26 = ro_1;
+    os[2i] = _e26.z;
+    let _e31 = rd_1;
+    ds[0i] = _e31.x;
+    let _e35 = rd_1;
+    ds[1i] = _e35.y;
+    let _e39 = rd_1;
+    ds[2i] = _e39.z;
+    let _e41 = type_20;
+    let _e43 = os[_e41];
+    o = _e43;
+    let _e45 = type_20;
+    let _e47 = ds[_e45];
+    d = _e47;
+    let _e49 = ro_1;
+    let _e50 = o;
+    let _e51 = rd_1;
+    let _e53 = d;
+    return (_e49 - ((_e50 * _e51) / vec3(_e53)));
 }
 
 fn renderCloud(ro_2: vec3<f32>, rd_2: vec3<f32>, secs_2: i32) -> vec2<f32> {
@@ -257,18 +264,18 @@ fn renderCloud(ro_2: vec3<f32>, rd_2: vec3<f32>, secs_2: i32) -> vec2<f32> {
     ro_3 = ro_2;
     rd_3 = rd_2;
     secs_3 = secs_2;
-    let _e16 = ro_3;
-    ros[0i] = _e16;
-    let _e19 = ro_3;
-    ros[1i] = (_e19 - vec3<f32>(1f, 0f, 0f));
-    let _e30 = ro_3;
-    ros[2i] = _e30;
-    let _e33 = ro_3;
-    ros[3i] = (_e33 - vec3<f32>(0f, 0.25f, 0f));
-    let _e44 = ro_3;
-    ros[4i] = _e44;
-    let _e47 = ro_3;
-    ros[5i] = (_e47 - vec3<f32>(0f, 0f, 1f));
+    let _e18 = ro_3;
+    ros[0i] = _e18;
+    let _e21 = ro_3;
+    ros[1i] = (_e21 - vec3<f32>(1f, 0f, 0f));
+    let _e32 = ro_3;
+    ros[2i] = _e32;
+    let _e35 = ro_3;
+    ros[3i] = (_e35 - vec3<f32>(0f, 0.25f, 0f));
+    let _e46 = ro_3;
+    ros[4i] = _e46;
+    let _e49 = ro_3;
+    ros[5i] = (_e49 - vec3<f32>(0f, 0f, 1f));
     order[0i] = 4i;
     order[1i] = 2i;
     order[2i] = 1i;
@@ -276,39 +283,39 @@ fn renderCloud(ro_2: vec3<f32>, rd_2: vec3<f32>, secs_2: i32) -> vec2<f32> {
     order[4i] = 3i;
     order[5i] = 5i;
     loop {
-        let _e83 = h;
-        if !((_e83 < 6i)) {
+        let _e85 = h;
+        if !((_e85 < 6i)) {
             break;
         }
         {
-            let _e90 = h;
-            let _e92 = order[_e90];
-            i = _e92;
-            let _e93 = i;
-            let _e95 = ros[_e93];
-            let _e96 = rd_3;
-            let _e97 = i;
-            let _e100 = intersectPlane(_e95, _e96, (_e97 / 2i));
-            intersect = _e100;
-            let _e101 = i;
-            let _e104 = i;
-            let _e108 = intersect;
-            let _e113 = intersect;
-            let _e118 = intersect;
-            let _e126 = intersect;
-            if ((((((_e101 == 0i) || (_e104 == 1i)) && (_e108.y > 0f)) && (_e113.z > 0f)) && (_e118.y < 0.25f)) && (_e126.z < 1f)) {
+            let _e92 = h;
+            let _e94 = order[_e92];
+            i = _e94;
+            let _e95 = i;
+            let _e97 = ros[_e95];
+            let _e98 = rd_3;
+            let _e99 = i;
+            let _e102 = intersectPlane(_e97, _e98, (_e99 / 2i));
+            intersect = _e102;
+            let _e103 = i;
+            let _e106 = i;
+            let _e110 = intersect;
+            let _e115 = intersect;
+            let _e120 = intersect;
+            let _e128 = intersect;
+            if ((((((_e103 == 0i) || (_e106 == 1i)) && (_e110.y > 0f)) && (_e115.z > 0f)) && (_e120.y < 0.25f)) && (_e128.z < 1f)) {
                 {
-                    let _e134 = intersect;
-                    deltay = abs((_e134.y - 0.25f));
-                    let _e143 = intersect;
-                    deltaz = abs((_e143.z - 1f));
-                    let _e152 = deltay;
-                    let _e153 = deltaz;
-                    delta = min(_e152, _e153);
-                    let _e155 = delta;
-                    let _e158 = deltay;
-                    let _e159 = deltaz;
-                    if ((_e155 < 1f) && (_e158 > _e159)) {
+                    let _e136 = intersect;
+                    deltay = abs((_e136.y - 0.25f));
+                    let _e145 = intersect;
+                    deltaz = abs((_e145.z - 1f));
+                    let _e154 = deltay;
+                    let _e155 = deltaz;
+                    delta = min(_e154, _e155);
+                    let _e157 = delta;
+                    let _e160 = deltay;
+                    let _e161 = deltaz;
+                    if ((_e157 < 1f) && (_e160 > _e161)) {
                         {
                             delta = 1f;
                         }
@@ -316,55 +323,55 @@ fn renderCloud(ro_2: vec3<f32>, rd_2: vec3<f32>, secs_2: i32) -> vec2<f32> {
                     break;
                 }
             }
-            let _e163 = i;
-            let _e166 = i;
-            let _e170 = intersect;
-            let _e175 = intersect;
-            let _e180 = intersect;
-            let _e188 = intersect;
-            if ((((((_e163 == 2i) || (_e166 == 3i)) && (_e170.x > 0f)) && (_e175.z > 0f)) && (_e180.x < 1f)) && (_e188.z < 1f)) {
+            let _e165 = i;
+            let _e168 = i;
+            let _e172 = intersect;
+            let _e177 = intersect;
+            let _e182 = intersect;
+            let _e190 = intersect;
+            if ((((((_e165 == 2i) || (_e168 == 3i)) && (_e172.x > 0f)) && (_e177.z > 0f)) && (_e182.x < 1f)) && (_e190.z < 1f)) {
                 {
                     offset = 0f;
-                    let _e198 = ro_3;
-                    if (_e198.x < 0f) {
+                    let _e200 = ro_3;
+                    if (_e200.x < 0f) {
                         {
                             offset = 1f;
                         }
                     }
-                    let _e206 = intersect;
-                    let _e208 = offset;
-                    let _e211 = intersect;
-                    delta = min(abs((_e206.x - _e208)), abs((_e211.z - 1f)));
+                    let _e208 = intersect;
+                    let _e210 = offset;
+                    let _e213 = intersect;
+                    delta = min(abs((_e208.x - _e210)), abs((_e213.z - 1f)));
                     break;
                 }
             }
-            let _e220 = i;
-            let _e223 = i;
-            let _e227 = intersect;
-            let _e232 = intersect;
-            let _e237 = intersect;
-            let _e245 = intersect;
-            if ((((((_e220 == 4i) || (_e223 == 5i)) && (_e227.x > 0f)) && (_e232.y > 0f)) && (_e237.x < 1f)) && (_e245.y < 0.25f)) {
+            let _e222 = i;
+            let _e225 = i;
+            let _e229 = intersect;
+            let _e234 = intersect;
+            let _e239 = intersect;
+            let _e247 = intersect;
+            if ((((((_e222 == 4i) || (_e225 == 5i)) && (_e229.x > 0f)) && (_e234.y > 0f)) && (_e239.x < 1f)) && (_e247.y < 0.25f)) {
                 {
                     offset_1 = 0f;
-                    let _e255 = ro_3;
-                    if (_e255.x < 0f) {
+                    let _e257 = ro_3;
+                    if (_e257.x < 0f) {
                         {
                             offset_1 = 1f;
                         }
                     }
-                    let _e263 = intersect;
-                    let _e265 = offset_1;
-                    deltax = abs((_e263.x - _e265));
-                    let _e269 = intersect;
-                    deltay_1 = abs((_e269.y - 0.25f));
-                    let _e278 = deltax;
-                    let _e279 = deltay_1;
-                    delta = min(_e278, _e279);
-                    let _e281 = delta;
-                    let _e284 = deltay_1;
-                    let _e285 = deltax;
-                    if ((_e281 < 1f) && (_e284 > _e285)) {
+                    let _e265 = intersect;
+                    let _e267 = offset_1;
+                    deltax = abs((_e265.x - _e267));
+                    let _e271 = intersect;
+                    deltay_1 = abs((_e271.y - 0.25f));
+                    let _e280 = deltax;
+                    let _e281 = deltay_1;
+                    delta = min(_e280, _e281);
+                    let _e283 = delta;
+                    let _e286 = deltay_1;
+                    let _e287 = deltax;
+                    if ((_e283 < 1f) && (_e286 > _e287)) {
                         {
                             delta = 1f;
                         }
@@ -374,51 +381,51 @@ fn renderCloud(ro_2: vec3<f32>, rd_2: vec3<f32>, secs_2: i32) -> vec2<f32> {
             }
         }
         continuing {
-            let _e87 = h;
-            h = (_e87 + 1i);
+            let _e89 = h;
+            h = (_e89 + 1i);
         }
     }
-    let _e289 = delta;
-    if (_e289 == 0f) {
+    let _e291 = delta;
+    if (_e291 == 0f) {
         {
             return vec2(0f);
         }
     }
-    let _e294 = delta;
-    let _e296 = intersect;
-    let _e297 = ro_3;
-    delta = (_e294 * (50f - distance(_e296, _e297)));
+    let _e296 = delta;
+    let _e298 = intersect;
+    let _e299 = ro_3;
+    delta = (_e296 * (50f - distance(_e298, _e299)));
     normals[0i] = vec3<f32>(-1f, 0f, 0f);
     normals[1i] = vec3<f32>(1f, 0f, 0f);
     normals[2i] = vec3<f32>(0f, -1f, 0f);
     normals[3i] = vec3<f32>(0f, 1f, 0f);
     normals[4i] = vec3<f32>(0f, 0f, -1f);
     normals[5i] = vec3<f32>(0f, 0f, 1f);
-    let _e341 = i;
-    let _e343 = normals[_e341];
-    normal_2 = _e343;
-    let _e345 = secs_3;
-    lighttime = (((f32(_e345) / 86400f) * TAU) - 1.5707964f);
-    let _e356 = lighttime;
-    let _e361 = lighttime;
-    let _e367 = lighttime;
-    lightpos_2 = vec3<f32>((5f - (cos(_e356) * 3f)), (max(sin(_e361), 0f) * 5f), (cos(_e367) * -10f));
-    let _e375 = intersect;
-    let _e376 = normal_2;
-    let _e377 = lightpos_2;
-    let _e378 = light(_e375, _e376, _e377);
-    mainlight = (0.7f * _e378);
-    let _e382 = intersect;
-    let _e383 = normal_2;
-    let _e389 = light(_e382, _e383, vec3<f32>(5f, 2f, -5f));
-    ambientlight = (0.3f * _e389);
-    let _e392 = lighttime;
-    lightfactor = (((min(sin(_e392), 0f) * 0.8f) + 0.2f) + 1f);
-    let _e403 = lightfactor;
-    let _e404 = mainlight;
-    let _e405 = ambientlight;
-    let _e408 = delta;
-    return vec2<f32>((_e403 * (_e404 + _e405)), min(_e408, 1f));
+    let _e343 = i;
+    let _e345 = normals[_e343];
+    normal_2 = _e345;
+    let _e347 = secs_3;
+    lighttime = (((f32(_e347) / 86400f) * TAU) - 1.5707964f);
+    let _e358 = lighttime;
+    let _e363 = lighttime;
+    let _e369 = lighttime;
+    lightpos_2 = vec3<f32>((5f - (cos(_e358) * 3f)), (max(sin(_e363), 0f) * 5f), (cos(_e369) * -10f));
+    let _e377 = intersect;
+    let _e378 = normal_2;
+    let _e379 = lightpos_2;
+    let _e380 = light(_e377, _e378, _e379);
+    mainlight = (0.7f * _e380);
+    let _e384 = intersect;
+    let _e385 = normal_2;
+    let _e391 = light(_e384, _e385, vec3<f32>(5f, 2f, -5f));
+    ambientlight = (0.3f * _e391);
+    let _e394 = lighttime;
+    lightfactor = (((min(sin(_e394), 0f) * 0.8f) + 0.2f) + 1f);
+    let _e405 = lightfactor;
+    let _e406 = mainlight;
+    let _e407 = ambientlight;
+    let _e410 = delta;
+    return vec2<f32>((_e405 * (_e406 + _e407)), min(_e410, 1f));
 }
 
 fn renderClouds(uv: vec2<f32>, secs_4: i32) -> vec2<f32> {
@@ -438,126 +445,212 @@ fn renderClouds(uv: vec2<f32>, secs_4: i32) -> vec2<f32> {
 
     uv_1 = uv;
     secs_5 = secs_4;
-    let _e15 = uv_1;
-    rduv = (_e15 - vec2(0.8f));
-    let _e21 = rduv;
-    let _e23 = RESOLUTION_1;
+    let _e17 = uv_1;
+    rduv = (_e17 - vec2(0.8f));
+    let _e23 = rduv;
     let _e25 = RESOLUTION_1;
-    rduv.x = (_e21.x * (_e23.x / _e25.y));
-    let _e29 = rduv;
-    rduv = (_e29 * 0.9f);
-    let _e32 = TIME_1;
-    pos = ((_e32 * 0.1f) + 15f);
-    let _e38 = rduv;
-    rd_4 = normalize(vec3<f32>(_e38.x, _e38.y, 1f));
+    let _e27 = RESOLUTION_1;
+    rduv.x = (_e23.x * (_e25.x / _e27.y));
+    let _e31 = rduv;
+    rduv = (_e31 * 0.9f);
+    let _e34 = TIME_1;
+    pos = ((_e34 * 0.1f) + 15f);
+    let _e40 = rduv;
+    rd_4 = normalize(vec3<f32>(_e40.x, _e40.y, 1f));
     loop {
-        let _e48 = z;
-        if !((_e48 <= -9f)) {
+        let _e50 = z;
+        if !((_e50 <= -9f)) {
             break;
         }
         {
             offset_2 = 0i;
-            let _e58 = pos;
-            x_4 = _e58;
+            let _e60 = pos;
+            x_4 = _e60;
             i_1 = 0i;
             loop {
-                let _e62 = x_4;
-                let _e65 = z;
-                if !((normalize(vec3<f32>(_e62, -1.2f, _e65)).x > -0.4f)) {
+                let _e64 = x_4;
+                let _e67 = z;
+                if !((normalize(vec3<f32>(_e64, -1.2f, _e67)).x > -0.4f)) {
                     break;
                 }
                 {
-                    let _e76 = x_4;
-                    let _e79 = z;
-                    ro_4 = vec3<f32>(_e76, -1.2f, _e79);
-                    let _e82 = ro_4;
-                    if (normalize(_e82).x > 0.9f) {
+                    let _e78 = x_4;
+                    let _e81 = z;
+                    ro_4 = vec3<f32>(_e78, -1.2f, _e81);
+                    let _e84 = ro_4;
+                    if (normalize(_e84).x > 0.9f) {
                         {
-                            let _e87 = x_4;
-                            let _e89 = z;
-                            delta_1 = (floor(_e87) - (_e89 * -2f));
-                            let _e95 = delta_1;
-                            delta_1 = max(_e95, 1f);
-                            let _e98 = offset_2;
-                            let _e99 = delta_1;
-                            offset_2 = (_e98 + i32(_e99));
-                            let _e102 = x_4;
-                            let _e103 = delta_1;
-                            x_4 = (_e102 - _e103);
-                            let _e105 = i_1;
-                            i_1 = (_e105 - 1i);
+                            let _e89 = x_4;
+                            let _e91 = z;
+                            delta_1 = (floor(_e89) - (_e91 * -2f));
+                            let _e97 = delta_1;
+                            delta_1 = max(_e97, 1f);
+                            let _e100 = offset_2;
+                            let _e101 = delta_1;
+                            offset_2 = (_e100 + i32(_e101));
+                            let _e104 = x_4;
+                            let _e105 = delta_1;
+                            x_4 = (_e104 - _e105);
+                            let _e107 = i_1;
+                            i_1 = (_e107 - 1i);
                             continue;
                         }
                     }
-                    let _e108 = x_4;
-                    x_4 = (_e108 - 1f);
-                    let _e111 = z;
-                    let _e114 = i_1;
-                    let _e115 = offset_2;
-                    let _e118 = ((_e111 * 1.63287f) + f32((_e114 + _e115)));
-                    let _e125 = rand((_e118 - (floor((_e118 / 1.4142135f)) * 1.4142135f)));
-                    if (_e125 > CLOUD_CHANCE) {
+                    let _e110 = x_4;
+                    x_4 = (_e110 - 1f);
+                    let _e113 = z;
+                    let _e116 = i_1;
+                    let _e117 = offset_2;
+                    let _e120 = ((_e113 * 1.63287f) + f32((_e116 + _e117)));
+                    let _e127 = rand((_e120 - (floor((_e120 / 1.4142135f)) * 1.4142135f)));
+                    if (_e127 > CLOUD_CHANCE) {
                         {
                             continue;
                         }
                     }
-                    let _e127 = ro_4;
-                    let _e128 = rd_4;
-                    let _e129 = secs_5;
-                    let _e130 = renderCloud(_e127, _e128, _e129);
-                    cloud = _e130;
-                    let _e132 = cloud;
-                    if (_e132.x > 0f) {
+                    let _e129 = ro_4;
+                    let _e130 = rd_4;
+                    let _e131 = secs_5;
+                    let _e132 = renderCloud(_e129, _e130, _e131);
+                    cloud = _e132;
+                    let _e134 = cloud;
+                    if (_e134.x > 0f) {
                         {
-                            let _e136 = cloud;
-                            result = _e136;
+                            let _e138 = cloud;
+                            result = _e138;
                         }
                     }
                 }
                 continuing {
-                    let _e73 = i_1;
-                    i_1 = (_e73 + 1i);
+                    let _e75 = i_1;
+                    i_1 = (_e75 + 1i);
                 }
             }
         }
         continuing {
-            let _e53 = z;
-            z = (_e53 + 1f);
+            let _e55 = z;
+            z = (_e55 + 1f);
         }
     }
-    let _e137 = result;
-    return _e137;
+    let _e139 = result;
+    return _e139;
+}
+
+fn grassHeight(x_5: f32) -> f32 {
+    var x_6: f32;
+
+    x_6 = x_5;
+    let _e15 = x_6;
+    return ((smoothstep(0.2f, 1f, (1f - _e15)) * 0.2f) + 0.07f);
+}
+
+fn grassPos(i_2: i32) -> vec2<f32> {
+    var i_3: i32;
+    var x_7: f32;
+
+    i_3 = i_2;
+    let _e15 = i_3;
+    let _e22 = i_3;
+    let _e24 = rand(f32(_e22));
+    x_7 = ((f32(_e15) / 201f) + (_e24 * GRASSOFFSETWIDTH));
+    let _e28 = x_7;
+    let _e29 = x_7;
+    let _e30 = grassHeight(_e29);
+    return vec2<f32>(_e28, _e30);
+}
+
+fn renderGrasses() -> vec4<f32> {
+    var i_4: i32 = 0i;
+    var grasspos: vec2<f32>;
+    var offset_3: f32;
+
+    loop {
+        let _e17 = i_4;
+        if !((_e17 <= NUMGRASSES)) {
+            break;
+        }
+        {
+            let _e23 = i_4;
+            let _e24 = grassPos(_e23);
+            grasspos = _e24;
+            let _e27 = coord_1;
+            let _e29 = grasspos;
+            let _e32 = square((_e27.y - _e29.y));
+            let _e34 = NOISE_1;
+            let _e36 = i_4;
+            let _e38 = rand(f32(_e36));
+            offset_3 = (((0.8f * _e32) * _e34) * ((_e38 * 0.4f) + 0.6f));
+            let _e45 = coord_1;
+            let _e47 = grasspos;
+            let _e49 = offset_3;
+            let _e52 = coord_1;
+            let _e54 = grasspos;
+            let _e56 = offset_3;
+            let _e61 = coord_1;
+            let _e63 = grasspos;
+            let _e66 = i_4;
+            let _e68 = rand(f32(_e66));
+            if (((_e45.x > (_e47.x + _e49)) && (_e52.x < ((_e54.x + _e56) + GRASSWIDTH))) && (_e61.y < ((_e63.y + GRASSHEIGHT) + (_e68 * GRASSOFFSETHEIGHT)))) {
+                {
+                    let _e75 = i_4;
+                    let _e79 = rand((f32(_e75) + 0.1f));
+                    return vec4<f32>(0f, (0.5f + (_e79 * 0.05f)), 0f, 1f);
+                }
+            }
+        }
+        continuing {
+            let _e20 = i_4;
+            i_4 = (_e20 + 1i);
+        }
+    }
+    return vec4(0f);
 }
 
 fn main_1() {
-    var pos_1: vec2<f32>;
-    var ipos: vec2<i32>;
     var secs_6: i32;
     var cloud_1: vec2<f32>;
+    var grassheight: f32;
+    var grass: vec4<f32>;
 
-    let _e8 = coord_1;
-    pos_1 = _e8;
-    let _e10 = coord_1;
-    ipos = vec2<i32>(_e10);
-    let _e13 = TIME_1;
-    let _e15 = (_e13 * 5000f);
-    secs_6 = i32((_e15 - (floor((_e15 / 86400f)) * 86400f)));
+    let _e15 = TIME_1;
+    let _e17 = (_e15 * 5000f);
+    secs_6 = i32((_e17 - (floor((_e17 / 86400f)) * 86400f)));
     o_1 = vec4(0f);
-    let _e25 = pos_1;
-    if (_e25.y > 0.85f) {
+    let _e27 = coord_1;
+    if (_e27.y > 0.862f) {
         {
-            let _e29 = pos_1;
-            let _e30 = secs_6;
-            let _e31 = renderClouds(_e29, _e30);
-            cloud_1 = _e31;
-            let _e33 = cloud_1;
-            if (_e33.x > 0f) {
+            let _e31 = coord_1;
+            let _e32 = secs_6;
+            let _e33 = renderClouds(_e31, _e32);
+            cloud_1 = _e33;
+            let _e35 = cloud_1;
+            if (_e35.x > 0f) {
                 {
-                    let _e37 = o_1;
-                    let _e38 = cloud_1;
-                    let _e39 = _e38.xxx;
-                    let _e45 = cloud_1;
-                    o_1 = mix(_e37, vec4<f32>(_e39.x, _e39.y, _e39.z, 1f), vec4((_e45.y * 0.8f)));
+                    let _e39 = o_1;
+                    let _e40 = cloud_1;
+                    let _e41 = _e40.xxx;
+                    let _e47 = cloud_1;
+                    o_1 = mix(_e39, vec4<f32>(_e41.x, _e41.y, _e41.z, 1f), vec4((_e47.y * 0.8f)));
+                }
+            }
+        }
+    }
+    let _e53 = coord_1;
+    let _e55 = grassHeight(_e53.x);
+    grassheight = _e55;
+    let _e57 = coord_1;
+    let _e59 = grassheight;
+    let _e61 = coord_1;
+    let _e63 = grassheight;
+    if ((_e57.y > _e59) && (_e61.y < ((_e63 + GRASSHEIGHT) + GRASSOFFSETHEIGHT))) {
+        {
+            let _e68 = renderGrasses();
+            grass = _e68;
+            let _e70 = grass;
+            if (_e70.w > 0f) {
+                {
+                    let _e74 = grass;
+                    o_1 = _e74;
                     return;
                 }
             } else {
@@ -570,11 +663,13 @@ fn main_1() {
 }
 
 @fragment 
-fn main(@location(0) coord: vec2<f32>, @location(1) RESOLUTION: vec2<f32>, @location(2) TIME: f32) -> FragmentOutput {
+fn main(@location(0) coord: vec2<f32>, @location(1) RESOLUTION: vec2<f32>, @location(2) TIME: f32, @location(3) RAND: f32, @location(4) NOISE: f32) -> FragmentOutput {
     coord_1 = coord;
     RESOLUTION_1 = RESOLUTION;
     TIME_1 = TIME;
+    RAND_1 = RAND;
+    NOISE_1 = NOISE;
     main_1();
-    let _e23 = o_1;
-    return FragmentOutput(_e23);
+    let _e41 = o_1;
+    return FragmentOutput(_e41);
 }

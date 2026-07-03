@@ -2,6 +2,8 @@ out vec4 o;
 layout (location=0) in vec2 coord;
 layout (location=1) in vec2 RESOLUTION;
 layout (location=2) in float TIME;
+layout (location=3) in float RAND;
+layout (location=4) in float NOISE;
 
 // uniforms:
 // float iTimeDelta
@@ -66,6 +68,7 @@ vec3 skycolor(in int secs) { // thank god for desmos
     }
 }
 
+// CLOUDS FUNCTIONS
 float light(vec3 raypos, vec3 normal, vec3 lightpos) {
     vec3 light = normalize(lightpos - raypos);
     float dif = dot(normal, light);
@@ -178,18 +181,57 @@ vec2 renderClouds(vec2 uv, int secs) {
     return result;
 }
 
+// GRASS FUNCTIONS
+
+float grassHeight(float x) {
+    return smoothstep(0.2, 1., 1. - x) * 0.2 + 0.07;
+}
+
+const int NUMGRASSES = 200;
+const float GRASSOFFSETWIDTH = 0.003; // width of the random offset of grassPos
+const float GRASSOFFSETHEIGHT = 0.025; // height of the random offset of grassPos
+
+vec2 grassPos(int i) {
+    float x = float(i)/(NUMGRASSES + 1.) + rand(i) * GRASSOFFSETWIDTH;
+    return vec2(x, grassHeight(x));
+}
+
+const float GRASSWIDTH = 0.0035;
+const float GRASSHEIGHT = 0.03;
+
+vec4 renderGrasses() {
+    for (int i = 0; i <= NUMGRASSES; i++) {
+        vec2 grasspos = grassPos(i);
+        float offset = 0.8 * square(coord.y - grasspos.y) * NOISE * (rand(i) * 0.4 + 0.6);
+        if (
+            coord.x > grasspos.x + offset &&
+            coord.x < grasspos.x + offset + GRASSWIDTH &&
+            coord.y < grasspos.y + GRASSHEIGHT + rand(i) * GRASSOFFSETHEIGHT
+        ) {
+            return vec4(0., 0.5 + rand(i + 0.1) * 0.05, 0., 1.);
+        }
+    }
+    return vec4(0.);
+}
+
 void main() {
-    vec2 pos = coord;
-    ivec2 ipos = ivec2(coord);
     // int secs = int(mod(iDate.w, 86400));
     int secs = int(mod(TIME * 5000., 86400.));
     // int secs = 30000;
 
     o = vec4(0.);
 
-    if (pos.y > 0.85) {
-        vec2 cloud = renderClouds(pos, secs);
+    if (coord.y > 0.862) {
+        vec2 cloud = renderClouds(coord, secs);
         if (cloud.x > 0.) { o = mix(o, vec4(cloud.xxx, 1.), cloud.y * 0.8); }
+    }
+
+    float grassheight = grassHeight(coord.x);
+    if (coord.y > grassheight && coord.y < grassheight + GRASSHEIGHT + GRASSOFFSETHEIGHT) {
+        vec4 grass = renderGrasses();
+        if (grass.a > 0.) {
+            o = grass;
+        }
     }
 
     // vec2 adjpos = vec2(pos.x, pos.y * RESOLUTION.y / RESOLUTION.x);

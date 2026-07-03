@@ -156,6 +156,8 @@ pub fn init() -> (State, EventQueue<State>) {
         width: 256.,
         height: 256.,
         time: 0.,
+        noise: 0.,
+        rand: 0.,
     };
 
     return (State {

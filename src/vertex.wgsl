@@ -2,6 +2,8 @@ struct Uniforms {
     width: f32,
     height: f32,
     time: f32,
+    rand: f32,
+    noise: f32,
 }
 
 // the rest was adapted somewhat from Claude
@@ -10,6 +12,8 @@ struct VertexOutput {
     @location(0) coord: vec2<f32>,
     @location(1) resolution: vec2<f32>,
     @location(2) time: f32,
+    @location(3) rand: f32,
+    @location(4) noise: f32,
 }
 
 @group(0)
@@ -25,5 +29,7 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     out.coord = vec2<f32>(x, y);
     out.time = uniforms.time;
     out.resolution = vec2(uniforms.width, uniforms.height);
+    out.rand = uniforms.rand;
+    out.noise = uniforms.noise;
     return out;
 }
