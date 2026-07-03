@@ -22,8 +22,7 @@ use smithay_client_toolkit::{
 use wayland_client::{
     Connection, EventQueue, Proxy, QueueHandle, globals::registry_queue_init, protocol::{wl_output, wl_seat, wl_surface},
 };
-use wgpu::{BlendState, ColorTargetState, ColorWrites, CompositeAlphaMode, FragmentState, FrontFace, Instance, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, RenderPipelineDescriptor, RequestAdapterOptions, SurfaceConfiguration, SurfaceTargetUnsafe, TextureUsages, VertexState, include_wgsl};
-
+use wgpu::{BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, BufferBinding, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites, CompositeAlphaMode, FragmentState, FrontFace, Instance, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, SurfaceConfiguration, SurfaceTargetUnsafe, TextureUsages, VertexState, include_wgsl};
 
 use crate::*;
 
@@ -75,11 +74,44 @@ pub fn init() -> (State, EventQueue<State>) {
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))
         .expect("Failed to request device");
 
+    let uniforms_buffer = device.create_buffer(&BufferDescriptor { // thank you wgpu shader uniforms example
+        label: None,
+        size: size_of::<Uniforms>() as u64,
+        usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+        label: None,
+        entries: &[BindGroupLayoutEntry {
+            binding: 0,
+            visibility: ShaderStages::VERTEX,
+            ty: BindingType::Buffer {
+                ty: BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }],
+    });
+    let bind_group = device.create_bind_group(&BindGroupDescriptor {
+        label: None,
+        layout: &bind_group_layout,
+        entries: &[BindGroupEntry {
+            binding: 0,
+            resource: BindingResource::Buffer(BufferBinding {
+                buffer: &uniforms_buffer,
+                offset: 0,
+                size: None,
+            }),
+        }],
+    });
+
     let vertex_shader = device.create_shader_module(include_wgsl!("vertex.wgsl"));
     let fragment_shader = device.create_shader_module(include_wgsl!("wallpaper.wgsl"));
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: None,
-        bind_group_layouts: &[],
+        bind_group_layouts: &[Some(&bind_group_layout)],
         immediate_size: 0,
     });
     let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -120,6 +152,12 @@ pub fn init() -> (State, EventQueue<State>) {
         cache: None
     });
 
+    let uniforms = Uniforms {
+        width: 256.,
+        height: 256.,
+        time: 0.,
+    };
+
     return (State {
         registry_state: RegistryState::new(&globals),
         seat_state: SeatState::new(&globals, &qh),
@@ -136,7 +174,11 @@ pub fn init() -> (State, EventQueue<State>) {
         device,
         queue,
         surface,
+        bind_group,
         render_pipeline,
+
+        uniforms,
+        uniforms_buffer,
     }, event_queue);
 }
 

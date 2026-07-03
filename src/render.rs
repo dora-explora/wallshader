@@ -29,6 +29,8 @@ impl State {
 
         let texture_view = surface_texture.texture.create_view(&TextureViewDescriptor::default());
 
+        self.queue.write_buffer(&self.uniforms_buffer, 0, self.uniforms.as_wgsl_bytes().expect("Error translating uniforms to WGSL bytes").as_slice());
+
         let mut encoder = self.device.create_command_encoder(&Default::default());
         {
             let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
@@ -38,7 +40,7 @@ impl State {
                     resolve_target: None,
                     depth_slice: None,
                     ops: Operations {
-                        load: LoadOp::Clear(wgpu::Color { r: 0.5, g: 0.7, b: 1., a: 1. }),
+                        load: LoadOp::Clear(wgpu::Color { r: 0.2, g: 0.4, b: 0.7, a: 1. }),
                         store: StoreOp::Store,
                     },
                 })],
@@ -49,6 +51,7 @@ impl State {
             });
 
             render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_bind_group(0, Some(&self.bind_group), &[]);
             render_pass.draw(0..3,0..1);
         }
 

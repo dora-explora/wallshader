@@ -1,8 +1,9 @@
+out vec4 o;
+layout (location=0) in vec2 coord;
+layout (location=1) in vec2 RESOLUTION;
+layout (location=2) in float TIME;
+
 // uniforms:
-// vec3 iResolution
-vec2 iResolution = vec2(1920, 1200);
-// float iTime
-// float iTime = 0.;
 // float iTimeDelta
 // float iFrameRate
 // int iFrame
@@ -97,7 +98,10 @@ vec2 renderCloud(vec3 ro, vec3 rd, int secs) {
         i = order[h];
         intersect = intersectPlane(ros[i], rd, i / 2);
         if ((i == 0 || i == 1) && intersect.y > 0. && intersect.z > 0. && intersect.y < CLOUD_DIMENSIONS.y && intersect.z < CLOUD_DIMENSIONS.z) {
-            delta = min(abs(intersect.y - CLOUD_DIMENSIONS.y), abs(intersect.z - CLOUD_DIMENSIONS.z));
+            float deltay = abs(intersect.y - CLOUD_DIMENSIONS.y);
+            float deltaz = abs(intersect.z - CLOUD_DIMENSIONS.z);
+            delta = min(deltay, deltaz);
+            if (delta < 1. && deltay > deltaz) { delta = 1.; }
             break;
         }
         if ((i == 2 || i == 3) && intersect.x > 0. && intersect.z > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.z < CLOUD_DIMENSIONS.z) {
@@ -109,7 +113,10 @@ vec2 renderCloud(vec3 ro, vec3 rd, int secs) {
         if ((i == 4 || i == 5) && intersect.x > 0. && intersect.y > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.y < CLOUD_DIMENSIONS.y) {
             float offset = 0.;
             if (ro.x < 0.) { offset = CLOUD_DIMENSIONS.x; }
-            delta = min(abs(intersect.x - offset), abs(intersect.y - CLOUD_DIMENSIONS.y));
+            float deltax = abs(intersect.x - offset);
+            float deltay = abs(intersect.y - CLOUD_DIMENSIONS.y);
+            delta = min(deltax, deltay);
+            if (delta < 1. && deltay > deltax) { delta = 1.; }
             break;
         }
     }
@@ -118,12 +125,12 @@ vec2 renderCloud(vec3 ro, vec3 rd, int secs) {
     // delta = 1.;
 
     vec3 normals[6];
-    normals[0] = vec3(-1., 0., 0.);
-    normals[1] = vec3(1., 0., 0.);
-    normals[2] = vec3(0., -1., 0.);
-    normals[3] = vec3(0., 1., 0.);
-    normals[4] = vec3(0., 0., -1.);
-    normals[5] = vec3(0., 0., 1.);
+    normals[0] = vec3(-1.,  0.,  0.);
+    normals[1] = vec3( 1.,  0.,  0.);
+    normals[2] = vec3( 0., -1.,  0.);
+    normals[3] = vec3( 0.,  1.,  0.);
+    normals[4] = vec3( 0.,  0., -1.);
+    normals[5] = vec3( 0.,  0.,  1.);
     vec3 normal = normals[i];
     float lighttime = ((float(secs) / 86400.) * TAU) - PI/2.;
     vec3 lightpos = vec3(
@@ -143,9 +150,9 @@ vec2 renderClouds(vec2 uv, int secs) {
     vec2 result = vec2(0.);
 
     vec2 rduv = uv - 0.8;
-    rduv.x *= iResolution.x / iResolution.y;
+    rduv.x *= RESOLUTION.x / RESOLUTION.y;
     rduv *= 0.9;
-    float pos = 15.;
+    float pos = TIME * 0.1 + 15.;
     vec3 rd = normalize(vec3(rduv, 1.));
 
     for (float z = -20.; z <= -9.; z++) {
@@ -171,15 +178,12 @@ vec2 renderClouds(vec2 uv, int secs) {
     return result;
 }
 
-out vec4 o;
-in vec2 coord;
-
 void main() {
     vec2 pos = coord;
     ivec2 ipos = ivec2(coord);
     // int secs = int(mod(iDate.w, 86400));
-    // int secs = int(mod(iTime * 5000., 86400.));
-    int secs = 30000;
+    int secs = int(mod(TIME * 5000., 86400.));
+    // int secs = 30000;
 
     o = vec4(0.);
 
@@ -188,11 +192,11 @@ void main() {
         if (cloud.x > 0.) { o = mix(o, vec4(cloud.xxx, 1.), cloud.y * 0.8); }
     }
 
-    // vec2 adjpos = vec2(pos.x, pos.y * iResolution.y / iResolution.x);
-    // float t = mod(iTime * 0.25, 10.);
+    // vec2 adjpos = vec2(pos.x, pos.y * RESOLUTION.y / RESOLUTION.x);
+    // float t = mod(TIME * 0.25, 10.);
     // vec2 floatpos = vec2(sin(PI * t) + 2.*(t + 1.), 4. - cos(PI * t) - 0.5 * t) * 0.15;
     // vec2 floatpos = vec2(0.1 - 0.1*cos(PI*t - 0.2) + 0.04*t, 0.9 + 0.1*smoothstep(0., 1., mod(-1.*t, 1.)) - 0.1*floor(t));
-    // floatpos.y *= iResolution.y / iResolution.x;
+    // floatpos.y *= RESOLUTION.y / RESOLUTION.x;
     // if (distance(floatpos, adjpos) < 0.0025) {
         // o = mix(o, vec4(0.3, 0.7, 0.1, 1.), 0.8);
     // }
