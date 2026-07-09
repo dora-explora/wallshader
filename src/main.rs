@@ -1,5 +1,6 @@
 use std::{thread::sleep, time::{Duration, Instant}};
 
+use chrono::{Datelike, Local, Timelike};
 use encase::ShaderType;
 use log::info;
 use noise::{NoiseFn, Perlin};
@@ -22,6 +23,10 @@ struct Uniforms {
     time: f32,
     rand: f32,
     noise: f32,
+    year: u32,
+    month: u32,
+    day: u32,
+    secs: u32,
 }
 
 impl Uniforms {
@@ -75,11 +80,19 @@ fn main() {
             info!("processed event");
         }
 
-        state.uniforms.width = state.width as f32;
-        state.uniforms.height = state.height as f32;
-        state.uniforms.time = start.elapsed().as_secs_f32();
-        state.uniforms.rand = rng.random();
-        state.uniforms.noise = (perlin.get([start.elapsed().as_secs_f64() * NOISE_SPEED]) * 2. - 0.5) as f32;
+        let datetime = Local::now();
+
+        state.uniforms = Uniforms {
+           width: state.width as f32,
+           height: state.height as f32,
+           time: start.elapsed().as_secs_f32(),
+           rand: rng.random(),
+           noise: (perlin.get([start.elapsed().as_secs_f64() * NOISE_SPEED]) * 2. - 0.5) as f32,
+           year: datetime.year() as u32, // this will be fine assuming christ has been born
+           month: datetime.month(),
+           day: datetime.day0(),
+           secs: datetime.num_seconds_from_midnight(),
+        };
 
         state.render().expect("Render error");
 

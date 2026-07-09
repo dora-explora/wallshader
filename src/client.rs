@@ -158,6 +158,10 @@ pub fn init() -> (State, EventQueue<State>) {
         time: 0.,
         noise: 0.,
         rand: 0.,
+        year: 0,
+        month: 0,
+        day: 0,
+        secs: 0,
     };
 
     return (State {

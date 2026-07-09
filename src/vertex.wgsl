@@ -4,6 +4,10 @@ struct Uniforms {
     time: f32,
     rand: f32,
     noise: f32,
+    year: u32,
+    month: u32,
+    day: u32,
+    secs: u32,
 }
 
 // the rest was adapted somewhat from Claude
@@ -14,6 +18,7 @@ struct VertexOutput {
     @location(2) time: f32,
     @location(3) rand: f32,
     @location(4) noise: f32,
+    @location(5) datetime: vec4<u32>
 }
 
 @group(0)
@@ -31,5 +36,6 @@ fn vs_main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     out.resolution = vec2(uniforms.width, uniforms.height);
     out.rand = uniforms.rand;
     out.noise = uniforms.noise;
+    out.datetime = vec4<u32>(uniforms.year, uniforms.month, uniforms.day, uniforms.secs);
     return out;
 }

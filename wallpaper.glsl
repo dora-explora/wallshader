@@ -4,6 +4,7 @@ layout (location=1) in vec2 RESOLUTION;
 layout (location=2) in float TIME;
 layout (location=3) in float RAND;
 layout (location=4) in float NOISE;
+layout (location=5) in uvec4 DATETIME;
 
 // uniforms:
 // float iTimeDelta
@@ -12,7 +13,6 @@ layout (location=4) in float NOISE;
 // float iChannelTime[4]
 // vec3 iChannelResolution[4]
 // vec4 iMouse
-// vec4 iDate
 // float iSampleRate
 
 // uniform sampler2D noise;
@@ -32,7 +32,7 @@ float square(in float n) {
     return n * n;
 }
 
-vec3 skycolor(in int secs) { // thank god for desmos
+vec3 skycolor(in uint secs) { // thank god for desmos
     if (secs < 28800) {
         float x = float(secs) / 28800.;
         float r = .3*x + .35;
@@ -88,7 +88,7 @@ vec3 intersectPlane(vec3 ro, vec3 rd, int type) { // type == 0 means x, 1 means 
     return ro - o * rd / d; // thank you ABSOLUTELY NO ONE I FIGURED THIS OUT MYSELF :DDD
 }
 
-vec2 renderCloud(vec3 ro, vec3 rd, int secs) {
+vec2 renderCloud(vec3 ro, vec3 rd, uint secs) {
     vec3 ros[6];
     ros[0] = ro; ros[1] = ro - vec2(CLOUD_DIMENSIONS.x, 0.).xyy;
     ros[2] = ro; ros[3] = ro - vec2(CLOUD_DIMENSIONS.y, 0.).yxy;
@@ -149,7 +149,7 @@ vec2 renderCloud(vec3 ro, vec3 rd, int secs) {
 
 const float CLOUD_CHANCE = 0.08;
 
-vec2 renderClouds(vec2 uv, int secs) {
+vec2 renderClouds(vec2 uv, uint secs) {
     vec2 result = vec2(0.);
 
     vec2 rduv = uv - 0.8;
@@ -202,7 +202,7 @@ const float GRASSHEIGHT = 0.03;
 vec4 renderGrasses() {
     for (int i = 0; i <= NUMGRASSES; i++) {
         vec2 grasspos = grassPos(i);
-        float offset = 0.8 * square(coord.y - grasspos.y) * NOISE * (rand(i) * 0.4 + 0.6);
+        float offset = 1.0 * square(coord.y - grasspos.y) * NOISE * (rand(i) * 0.4 + 0.6);
         if (
             coord.x > grasspos.x + offset &&
             coord.x < grasspos.x + offset + GRASSWIDTH &&
@@ -215,8 +215,8 @@ vec4 renderGrasses() {
 }
 
 void main() {
-    // int secs = int(mod(iDate.w, 86400));
-    int secs = int(mod(TIME * 5000., 86400.));
+    uint secs = DATETIME.w;
+    // int secs = int(mod(TIME * 5000., 86400.));
     // int secs = 30000;
 
     o = vec4(0.);
@@ -233,6 +233,11 @@ void main() {
             o = grass;
         }
     }
+
+    // vec2 adjcoord = vec2(coord.x * RESOLUTION.x / RESOLUTION.y, coord.y);
+    // if (distance(adjcoord, vec2(0.5)) < 0.1 && distance(adjcoord, vec2(0.44, 0.5)) > 0.1) {
+        // o = vec4(0., 0, 0., 1.);
+    // }
 
     // vec2 adjpos = vec2(pos.x, pos.y * RESOLUTION.y / RESOLUTION.x);
     // float t = mod(TIME * 0.25, 10.);
