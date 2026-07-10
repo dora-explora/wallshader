@@ -5,17 +5,8 @@ layout (location=2) in float TIME;
 layout (location=3) in float RAND;
 layout (location=4) in float NOISE;
 layout (location=5) in uvec4 DATETIME;
-
-// uniforms:
-// float iTimeDelta
-// float iFrameRate
-// int iFrame
-// float iChannelTime[4]
-// vec3 iChannelResolution[4]
-// vec4 iMouse
-// float iSampleRate
-
-// uniform sampler2D noise;
+layout (set = 0, binding = 1) uniform texture2D bg_texture;
+layout (set = 0, binding = 2) uniform sampler bg_sampler;
 
 const float TAU = 6.2831853;
 const float PI = TAU / 2.;
@@ -202,7 +193,7 @@ const float GRASSHEIGHT = 0.03;
 vec4 renderGrasses() {
     for (int i = 0; i <= NUMGRASSES; i++) {
         vec2 grasspos = grassPos(i);
-        float offset = 1.0 * square(coord.y - grasspos.y) * NOISE * (rand(i) * 0.4 + 0.6);
+        float offset = 1.5 * square(coord.y - grasspos.y) * NOISE * (rand(i) * 0.4 + 0.6);
         if (
             coord.x > grasspos.x + offset &&
             coord.x < grasspos.x + offset + GRASSWIDTH &&
@@ -234,17 +225,12 @@ void main() {
         }
     }
 
+    vec2 flipcoord = vec2(coord.x, 1. - coord.y); // dont know why this is necessary but it is
+    o = mix(texture(sampler2D(bg_texture, bg_sampler), flipcoord), o, o.a);
+    o.a = 1.;
+
     // vec2 adjcoord = vec2(coord.x * RESOLUTION.x / RESOLUTION.y, coord.y);
     // if (distance(adjcoord, vec2(0.5)) < 0.1 && distance(adjcoord, vec2(0.44, 0.5)) > 0.1) {
         // o = vec4(0., 0, 0., 1.);
-    // }
-
-    // vec2 adjpos = vec2(pos.x, pos.y * RESOLUTION.y / RESOLUTION.x);
-    // float t = mod(TIME * 0.25, 10.);
-    // vec2 floatpos = vec2(sin(PI * t) + 2.*(t + 1.), 4. - cos(PI * t) - 0.5 * t) * 0.15;
-    // vec2 floatpos = vec2(0.1 - 0.1*cos(PI*t - 0.2) + 0.04*t, 0.9 + 0.1*smoothstep(0., 1., mod(-1.*t, 1.)) - 0.1*floor(t));
-    // floatpos.y *= RESOLUTION.y / RESOLUTION.x;
-    // if (distance(floatpos, adjpos) < 0.0025) {
-        // o = mix(o, vec4(0.3, 0.7, 0.1, 1.), 0.8);
     // }
 }

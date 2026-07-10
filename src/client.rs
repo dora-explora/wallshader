@@ -22,7 +22,7 @@ use smithay_client_toolkit::{
 use wayland_client::{
     Connection, EventQueue, Proxy, QueueHandle, globals::registry_queue_init, protocol::{wl_output, wl_seat, wl_surface},
 };
-use wgpu::{BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BlendState, BufferBinding, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites, CompositeAlphaMode, FragmentState, FrontFace, Instance, InstanceDescriptor, MultisampleState, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, RenderPipelineDescriptor, RequestAdapterOptions, ShaderStages, SurfaceConfiguration, SurfaceTargetUnsafe, TextureUsages, VertexState, include_wgsl};
+use wgpu::{AddressMode, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, BufferBinding, BufferBindingType, BufferDescriptor, BufferUsages, ColorTargetState, ColorWrites, CompositeAlphaMode, Extent3d, FilterMode, FragmentState, FrontFace, Instance, InstanceDescriptor, MultisampleState, Origin3d, PipelineLayoutDescriptor, PolygonMode, PresentMode, PrimitiveState, PrimitiveTopology, RenderPipelineDescriptor, RequestAdapterOptions, SamplerBindingType, SamplerDescriptor, ShaderStages, SurfaceConfiguration, SurfaceTargetUnsafe, TexelCopyBufferLayout, TexelCopyTextureInfo, TextureAspect, TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages, TextureViewDescriptor, VertexState, include_wgsl};
 
 use crate::*;
 
@@ -69,10 +69,10 @@ pub fn init() -> (State, EventQueue<State>) {
         compatible_surface: Some(&surface),
         ..Default::default()
     }))
-    .expect("Failed to find suitable adapter");
+    .expect("failed to find suitable adapter");
 
     let (device, queue) = pollster::block_on(adapter.request_device(&Default::default()))
-        .expect("Failed to request device");
+        .expect("failed to request device");
 
     let uniforms_buffer = device.create_buffer(&BufferDescriptor { // thank you wgpu shader uniforms example
         label: None,
@@ -81,34 +81,99 @@ pub fn init() -> (State, EventQueue<State>) {
         mapped_at_creation: false,
     });
 
+    // almost entirely claude
+    let bg_image = image::open("assets/bg.png").expect("failed to open assets/bg.png").into_rgba8();
+    let (bg_width, bg_height) = bg_image.dimensions();
+    let bg_texture = device.create_texture(&TextureDescriptor {
+        label: None,
+        size: Extent3d { width: bg_width, height: bg_height, depth_or_array_layers: 1 },
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: TextureDimension::D2,
+        format: TextureFormat::Rgba8UnormSrgb,
+        usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    queue.write_texture(
+        TexelCopyTextureInfo {
+            texture: &bg_texture,
+            mip_level: 0,
+            origin: Origin3d::ZERO,
+            aspect: TextureAspect::All,
+        },
+        &bg_image,
+        TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(4 * bg_width),
+            rows_per_image: None,
+        },
+        Extent3d { width: bg_width, height: bg_height, depth_or_array_layers: 1 },
+    );
+    let bg_texture_view = bg_texture.create_view(&TextureViewDescriptor::default());
+    let bg_sampler = device.create_sampler(&SamplerDescriptor {
+        mag_filter: FilterMode::Linear,
+        min_filter: FilterMode::Linear,
+        address_mode_u: AddressMode::ClampToEdge,
+        address_mode_v: AddressMode::ClampToEdge,
+        ..Default::default()
+    });
+
     let bind_group_layout = device.create_bind_group_layout(&BindGroupLayoutDescriptor {
         label: None,
-        entries: &[BindGroupLayoutEntry {
-            binding: 0,
-            visibility: ShaderStages::VERTEX,
-            ty: BindingType::Buffer {
-                ty: BufferBindingType::Uniform,
-                has_dynamic_offset: false,
-                min_binding_size: None,
+        entries: &[
+            BindGroupLayoutEntry {
+                binding: 0,
+                visibility: ShaderStages::VERTEX,
+                ty: BindingType::Buffer {
+                    ty: BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
             },
-            count: None,
-        }],
+            BindGroupLayoutEntry {
+                binding: 1,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Texture {
+                    multisampled: false,
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    sample_type: TextureSampleType::Float { filterable: true },
+                },
+                count: None,
+            },
+            BindGroupLayoutEntry {
+                binding: 2,
+                visibility: ShaderStages::FRAGMENT,
+                ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                count: None,
+            }
+        ],
     });
     let bind_group = device.create_bind_group(&BindGroupDescriptor {
         label: None,
         layout: &bind_group_layout,
-        entries: &[BindGroupEntry {
-            binding: 0,
-            resource: BindingResource::Buffer(BufferBinding {
-                buffer: &uniforms_buffer,
-                offset: 0,
-                size: None,
-            }),
-        }],
+        entries: &[
+            BindGroupEntry {
+                binding: 0,
+                resource: BindingResource::Buffer(BufferBinding {
+                    buffer: &uniforms_buffer,
+                    offset: 0,
+                    size: None,
+                }),
+            },
+            BindGroupEntry {
+                binding: 1,
+                resource: BindingResource::TextureView(&bg_texture_view),
+            },
+            BindGroupEntry {
+                binding: 2,
+                resource: BindingResource::Sampler(&bg_sampler),
+            }
+        ],
     });
 
-    let vertex_shader = device.create_shader_module(include_wgsl!("vertex.wgsl"));
-    let fragment_shader = device.create_shader_module(include_wgsl!("wallpaper.wgsl"));
+    let vertex_shader = device.create_shader_module(include_wgsl!("../assets/vertex.wgsl"));
+    let fragment_shader = device.create_shader_module(include_wgsl!("../assets/wallpaper.wgsl"));
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: None,
         bind_group_layouts: &[Some(&bind_group_layout)],
@@ -128,7 +193,7 @@ pub fn init() -> (State, EventQueue<State>) {
             entry_point: Some("main"),
             targets: &[Some(ColorTargetState {
                 format: surface.get_capabilities(&adapter).formats[0],
-                blend: Some(BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                blend: None,
                 write_mask: ColorWrites::ALL,
             })],
             compilation_options: Default::default()
