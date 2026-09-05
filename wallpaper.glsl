@@ -79,7 +79,7 @@ vec3 intersectPlane(vec3 ro, vec3 rd, int type) { // type == 0 means x, 1 means 
     return ro - o * rd / d; // thank you ABSOLUTELY NO ONE I FIGURED THIS OUT MYSELF :DDD
 }
 
-vec2 renderCloud(vec3 ro, vec3 rd, uint secs) {
+float renderCloud(vec3 ro, vec3 rd, uint secs) {
     vec3 ros[6];
     ros[0] = ro; ros[1] = ro - vec2(CLOUD_DIMENSIONS.x, 0.).xyy;
     ros[2] = ro; ros[3] = ro - vec2(CLOUD_DIMENSIONS.y, 0.).yxy;
@@ -88,35 +88,19 @@ vec2 renderCloud(vec3 ro, vec3 rd, uint secs) {
     int i;
     float delta = 0.;
     vec3 intersect = vec3(0.);
-    for (int h = 0; h < 6; h++) {
+    int h = 0;
+    for (; h < 6; h++) {
         i = order[h];
         intersect = intersectPlane(ros[i], rd, i / 2);
-        if ((i == 0 || i == 1) && intersect.y > 0. && intersect.z > 0. && intersect.y < CLOUD_DIMENSIONS.y && intersect.z < CLOUD_DIMENSIONS.z) {
-            float deltay = abs(intersect.y - CLOUD_DIMENSIONS.y);
-            float deltaz = abs(intersect.z - CLOUD_DIMENSIONS.z);
-            delta = min(deltay, deltaz);
-            if (delta < 1. && deltay > deltaz) { delta = 1.; }
-            break;
-        }
-        if ((i == 2 || i == 3) && intersect.x > 0. && intersect.z > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.z < CLOUD_DIMENSIONS.z) {
-            float offset = 0.;
-            if (ro.x < 0.) { offset = CLOUD_DIMENSIONS.x; }
-            delta = min(abs(intersect.x - offset), abs(intersect.z - CLOUD_DIMENSIONS.z));
-            break;
-        }
-        if ((i == 4 || i == 5) && intersect.x > 0. && intersect.y > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.y < CLOUD_DIMENSIONS.y) {
-            float offset = 0.;
-            if (ro.x < 0.) { offset = CLOUD_DIMENSIONS.x; }
-            float deltax = abs(intersect.x - offset);
-            float deltay = abs(intersect.y - CLOUD_DIMENSIONS.y);
-            delta = min(deltax, deltay);
-            if (delta < 1. && deltay > deltax) { delta = 1.; }
-            break;
-        }
+        if (
+            ((i == 0 || i == 1) && intersect.y > 0. && intersect.z > 0. && intersect.y < CLOUD_DIMENSIONS.y && intersect.z < CLOUD_DIMENSIONS.z) ||
+            ((i == 2 || i == 3) && intersect.x > 0. && intersect.z > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.z < CLOUD_DIMENSIONS.z) ||
+            ((i == 4 || i == 5) && intersect.x > 0. && intersect.y > 0. && intersect.x < CLOUD_DIMENSIONS.x && intersect.y < CLOUD_DIMENSIONS.y)
+        ) { break; }
     }
-    if (delta == 0.) { return vec2(0.); }
+    if (h == 6) { return 0.; }
     delta *= 50. - distance(intersect, ro);
-    // delta = 1.;
+    delta = 1.;
 
     vec3 normals[6];
     normals[0] = vec3(-1.,  0.,  0.);
@@ -135,13 +119,13 @@ vec2 renderCloud(vec3 ro, vec3 rd, uint secs) {
     float mainlight = 0.7 * light(intersect, normal, lightpos);
     float ambientlight = 0.3 * light(intersect, normal, vec3(5., 2., -5.));
     float lightfactor = min(sin(lighttime), 0.) * 0.8 + 0.2 + 1.;
-    return vec2(lightfactor * (mainlight + ambientlight), min(delta, 1.));
+    return lightfactor * (mainlight + ambientlight);
 }
 
 const float CLOUD_CHANCE = 0.08;
 
-vec2 renderClouds(vec2 uv, uint secs) {
-    vec2 result = vec2(0.);
+float renderClouds(vec2 uv, uint secs) {
+    float result = 0.;
 
     vec2 rduv = uv - 0.8;
     rduv.x *= RESOLUTION.x / RESOLUTION.y;
@@ -165,8 +149,8 @@ vec2 renderClouds(vec2 uv, uint secs) {
             }
             x--;
             if (rand(mod(z * 1.63287 + float(i + offset), sqrt(2.))) > CLOUD_CHANCE) { continue; }
-            vec2 cloud = renderCloud(ro, rd, secs);
-            if (cloud.x > 0.) { result = cloud; }
+            float cloud = renderCloud(ro, rd, secs);
+            if (cloud > 0.) { result = cloud; }
         }
     }
     return result;
@@ -213,8 +197,8 @@ void main() {
     o = vec4(0.);
 
     if (coord.y > 0.862) {
-        vec2 cloud = renderClouds(coord, secs);
-        if (cloud.x > 0.) { o = mix(o, vec4(cloud.xxx, 1.), cloud.y * 0.8); }
+        float cloud = renderClouds(coord, secs);
+        if (cloud > 0.) { o = mix(o, vec4(vec3(cloud), 1.), 0.8); }
     }
 
     float grassheight = grassHeight(coord.x);

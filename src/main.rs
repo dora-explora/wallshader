@@ -60,7 +60,7 @@ struct State {
     uniforms_buffer: Buffer,
 }
 
-const FRAMETIME_TARGET: Duration = Duration::from_millis(120);
+const FRAMETIME_TARGET: Duration = Duration::from_millis(100);
 const NOISE_SPEED: f64 = 0.8;
 
 fn main() {
