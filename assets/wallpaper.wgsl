@@ -199,31 +199,28 @@ fn main(@location(0) _coord: vec2<f32>, @location(1) resolution: vec2<f32>, @loc
     DATETIME = datetime;
 
     let secs: u32 = DATETIME.w;
-    // int secs = int(mod(TIME * 5000., 86400.));
-    // int secs = 30000;
+    // let secs = u32(modf(TIME * 5000., 86400.));
+    // let secs: u32 = 30000;
 
     var o = vec4(0.);
 
-    if (coord.y > 0.862) {
+    if coord.y > 0.862 {
         let cloud = renderClouds(coord, secs);
         if (cloud > 0.) { o = mix(o, vec4(vec3(cloud), 1.), 0.8); }
     }
 
     let grassheight = grassHeight(coord.x);
-    if (coord.y > grassheight && coord.y < grassheight + GRASSHEIGHT + GRASSOFFSETHEIGHT) {
+    if coord.y > grassheight && coord.y < grassheight + GRASSHEIGHT + GRASSOFFSETHEIGHT {
         let grass = renderGrasses();
-        if (grass.a > 0.) {
+        if grass.a > 0. {
             o = grass;
         }
     }
 
     let flipcoord = vec2(coord.x, 1. - coord.y); // dont know why this is necessary but it is
-    o = mix(textureSample(bg_texture, bg_sampler, flipcoord), o, o.a);
-    o.a = 1.;
+    let bg: vec4<f32> = textureSample(bg_texture, bg_sampler, flipcoord);
+    o = mix(bg, o, 1. - bg.a);
+    // o.a = 1.;
 
-    // vec2 adjcoord = vec2(coord.x * RESOLUTION.x / RESOLUTION.y, coord.y);
-    // if (distance(adjcoord, vec2(0.5)) < 0.1 && distance(adjcoord, vec2(0.44, 0.5)) > 0.1) {
-        // o = vec4(0., 0, 0., 1.);
-    // }
     return FragmentOutput(o);
 }
