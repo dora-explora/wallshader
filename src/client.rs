@@ -79,43 +79,6 @@ pub fn init() -> (State, EventQueue<State>) {
         mapped_at_creation: false,
     });
 
-    // almost entirely claude
-    let bg_image = image::open("assets/bg.png").expect("failed to open assets/bg.png").into_rgba8();
-    let (bg_width, bg_height) = bg_image.dimensions();
-    let bg_texture = device.create_texture(&wgpu::TextureDescriptor {
-        label: None,
-        size: wgpu::Extent3d { width: bg_width, height: bg_height, depth_or_array_layers: 1 },
-        mip_level_count: 1,
-        sample_count: 1,
-        dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
-        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        view_formats: &[],
-    });
-    queue.write_texture(
-        wgpu::TexelCopyTextureInfo {
-            texture: &bg_texture,
-            mip_level: 0,
-            origin: wgpu::Origin3d::ZERO,
-            aspect: wgpu::TextureAspect::All,
-        },
-        &bg_image,
-        wgpu::TexelCopyBufferLayout {
-            offset: 0,
-            bytes_per_row: Some(4 * bg_width),
-            rows_per_image: None,
-        },
-        wgpu::Extent3d { width: bg_width, height: bg_height, depth_or_array_layers: 1 },
-    );
-    let bg_texture_view = bg_texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let bg_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-        mag_filter: wgpu::FilterMode::Linear,
-        min_filter: wgpu::FilterMode::Linear,
-        address_mode_u: wgpu::AddressMode::ClampToEdge,
-        address_mode_v: wgpu::AddressMode::ClampToEdge,
-        ..Default::default()
-    });
-
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         label: None,
         entries: &[
@@ -129,22 +92,6 @@ pub fn init() -> (State, EventQueue<State>) {
                 },
                 count: None,
             },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Texture {
-                    multisampled: false,
-                    view_dimension: wgpu::TextureViewDimension::D2,
-                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                },
-                count: None,
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 2,
-                visibility: wgpu::ShaderStages::FRAGMENT,
-                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                count: None,
-            }
         ],
     });
     let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
@@ -159,14 +106,6 @@ pub fn init() -> (State, EventQueue<State>) {
                     size: None,
                 }),
             },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: wgpu::BindingResource::TextureView(&bg_texture_view),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: wgpu::BindingResource::Sampler(&bg_sampler),
-            }
         ],
     });
 
@@ -219,7 +158,7 @@ pub fn init() -> (State, EventQueue<State>) {
         width: 256.,
         height: 256.,
         time: 0.,
-        noise: 0.,
+        noises: Vec4::new(0., 0., 0., 0.),
         rand: 0.,
         year: 0,
         month: 0,

@@ -3,6 +3,7 @@ use std::{thread::sleep, time::{Duration, Instant}};
 use chrono::{Datelike, Local, Timelike};
 use encase::ShaderType;
 use log::info;
+use glam::Vec4;
 use noise::{NoiseFn, Perlin};
 use rand::{RngExt, rng};
 use smithay_client_toolkit::{
@@ -22,7 +23,7 @@ struct Uniforms {
     height: f32,
     time: f32,
     rand: f32,
-    noise: f32,
+    noises: Vec4,
     year: u32,
     month: u32,
     day: u32,
@@ -61,7 +62,7 @@ struct State {
 }
 
 const FRAMETIME_TARGET: Duration = Duration::from_millis(100);
-const NOISE_SPEED: f64 = 0.8;
+const NOISE_SPEED: f64 = 0.6;
 
 fn main() {
     env_logger::init();
@@ -69,10 +70,9 @@ fn main() {
     let (mut state, mut event_queue) = client::init();
 
     let mut rng = rng();
-    let perlin = Perlin::new(0);
+    let perlins = [Perlin::new(0), Perlin::new(1), Perlin::new(2), Perlin::new(3)];
 
     let start = Instant::now();
-    // let mut frametimes: Vec<u128> =  vec![];
     loop {
         let framestart = Instant::now();
 
@@ -82,12 +82,17 @@ fn main() {
 
         let datetime = Local::now();
 
+        let mut noises: [f32; 4] = [0.; 4];
+        for i in 0..4 {
+            noises[i] = (perlins[i].get([start.elapsed().as_secs_f64() * NOISE_SPEED]) * 2. - 0.5) as f32;
+        }
+
         state.uniforms = Uniforms {
            width: state.width as f32,
            height: state.height as f32,
            time: start.elapsed().as_secs_f32(),
            rand: rng.random(),
-           noise: (perlin.get([start.elapsed().as_secs_f64() * NOISE_SPEED]) * 2. - 0.5) as f32,
+           noises: noises.into(),
            year: datetime.year() as u32, // this will be fine assuming christ has been born
            month: datetime.month(),
            day: datetime.day0(),

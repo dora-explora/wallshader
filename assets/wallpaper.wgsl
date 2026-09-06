@@ -1,14 +1,9 @@
-struct FragmentOutput { @location(0) o: vec4<f32>, }
-
-var<private> o: vec4<f32>;
 var<private> coord: vec2<f32>;
 var<private> RESOLUTION: vec2<f32>;
 var<private> TIME: f32;
 var<private> RAND: f32;
-var<private> NOISE: f32;
+var<private> NOISES: vec4<f32>;
 var<private> DATETIME: vec4<u32>;
-@group(0) @binding(1) var bg_texture: texture_2d<f32>;
-@group(0) @binding(2) var bg_sampler: sampler;
 
 const TAU: f32 = 6.2831853;
 const PI: f32 = TAU / 2.;
@@ -23,42 +18,6 @@ fn rand(input: f32) -> f32 {
 
 fn square(n: f32) -> f32 {
     return n * n;
-}
-
-fn skycolor(secs: u32) -> vec3<f32> { // thank god for desmos
-    if (secs < 28800) {
-        let x = f32(secs) / 28800.;
-        let r = .3*x + .35;
-        let g = .7*x + .15;
-        let b = .9 - .8*square(x - 1.);
-        var f = x + 0.82574; // x + sqrt(1 / 0.3) - 1, of course
-        f *= .3*f;
-        return f * vec3(r, g, b);
-    } else if (secs < 57600) {
-        let x = f32(secs - 28800) / 28880.;
-        let r = .65 - .3*x;
-        let g = 0.;
-        if (x < 0.4) { let g = .898 - .3*square(x - .4); }
-        else { let g = .898 - square(x - .4); }
-        let b = .1*x + .9;
-        return vec3(r, g, b);
-    } else if (secs < 72000) {
-        let x = f32(secs - 57600) / 14400.;
-        let r = min(1., square(5.*x) + .35);
-        let g = max(0., .538 - .6*x);
-        let b = .2 / (x + .2);
-        let f = min(1., 1.2 - x);
-        return f * vec3(r, g, b);
-    } else {
-        let x = f32(secs - 72000) / 14400.;
-        let r = 1. - .65*x;
-        let g = .15*x;
-        var b = 0.;
-        if (x < 0.77) { b = 1. - .69*square(2.*x - 1.1); }
-        else { b = .91 - square(3.*x - 2.1); }
-        let f = .2;
-        return f * vec3(r, g, b);
-    }
 }
 
 // CLOUD FUNCTIONS
@@ -163,8 +122,8 @@ fn grassHeight(x: f32) -> f32 {
 }
 
 const NUMGRASSES: u32 = 200;
-const GRASSOFFSETWIDTH: f32 = 0.003; // width of the random offset of grassPos
-const GRASSOFFSETHEIGHT: f32 = 0.025; // height of the random offset of grasPos
+const GRASSOFFSETWIDTH: f32 = 0.002; // max width of the random offset of grassPos
+const GRASSOFFSETHEIGHT: f32 = 0.04; // max height of the random offset of grasPos
 
 fn grassPos(i: u32) -> vec2<f32> {
     let x = f32(i)/(f32(NUMGRASSES) + 1.) + rand(f32(i)) * GRASSOFFSETWIDTH;
@@ -177,36 +136,44 @@ const GRASSHEIGHT: f32 = 0.03;
 fn renderGrasses() -> vec4<f32> {
     for (var i: u32 = 0; i <= NUMGRASSES; i++) {
         let grasspos = grassPos(i);
-        let offset = 1.5 * square(coord.y - grasspos.y) * NOISE * (rand(f32(i)) * 0.4 + 0.6);
+        let wind = .3*NOISES[u32(rand(f32(i)) * 3.)] + NOISES[3];
+        let offset = 1.5 * square(coord.y - grasspos.y) * wind * (rand(f32(i) + 1.) * 0.4 + 0.6);
         if (
             coord.x > grasspos.x + offset &&
             coord.x < grasspos.x + offset + GRASSWIDTH &&
-            coord.y < grasspos.y + GRASSHEIGHT + rand(f32(i)) * GRASSOFFSETHEIGHT
+            coord.y < grasspos.y + GRASSHEIGHT + rand(f32(i) + 2.) * GRASSOFFSETHEIGHT
         ) {
-            return vec4(0., 0.5 + rand(f32(i) + 0.1) * 0.05, 0., 1.);
+            return vec4(0., 0.6 + rand(f32(i) + 3.) * 0.1, 0.1, 1.);
         }
     }
     return vec4(0.);
 }
 
 @fragment
-fn main(@location(0) _coord: vec2<f32>, @location(1) resolution: vec2<f32>, @location(2) time: f32, @location(3) rand: f32, @location(4) noise: f32, @location(5) @interpolate(flat) datetime: vec4<u32>) -> FragmentOutput {
+fn main(
+    @location(0) _coord: vec2<f32>,
+    @location(1) resolution: vec2<f32>,
+    @location(2) time: f32,
+    @location(3) rand: f32,
+    @location(4) noises: vec4<f32>,
+    @location(5) @interpolate(flat) datetime: vec4<u32>
+)-> @location(0) vec4<f32> {
     coord = _coord;
     RESOLUTION = resolution;
     TIME = time;
     RAND = rand;
-    NOISE = noise;
+    NOISES = noises;
     DATETIME = datetime;
 
-    let secs: u32 = DATETIME.w;
-    // let secs = u32(modf(TIME * 5000., 86400.));
-    // let secs: u32 = 30000;
+    var o: vec4<f32> = vec4(0.);
 
-    var o = vec4(0.);
+    let secs: u32 = DATETIME.w;
+    // let secs = u32(TIME * 5000. % 86400.);
+    // let secs: u32 = 30000;
 
     if coord.y > 0.862 {
         let cloud = renderClouds(coord, secs);
-        if (cloud > 0.) { o = mix(o, vec4(vec3(cloud), 1.), 0.8); }
+        if (cloud > 0.) { o = mix(o, vec4(vec3(cloud), 1.), 0.8); return o; }
     }
 
     let grassheight = grassHeight(coord.x);
@@ -214,13 +181,14 @@ fn main(@location(0) _coord: vec2<f32>, @location(1) resolution: vec2<f32>, @loc
         let grass = renderGrasses();
         if grass.a > 0. {
             o = grass;
+            return o;
         }
     }
 
-    let flipcoord = vec2(coord.x, 1. - coord.y); // dont know why this is necessary but it is
-    let bg: vec4<f32> = textureSample(bg_texture, bg_sampler, flipcoord);
-    o = mix(bg, o, 1. - bg.a);
-    // o.a = 1.;
-
-    return FragmentOutput(o);
+    if coord.y < grassheight {
+        o = vec4(0.1, 0.6, 0.05, 1.);
+    } else {
+        o = vec4(0.2, 0.5, 1., 1.);
+    }
+    return o;
 }

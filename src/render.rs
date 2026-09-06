@@ -40,8 +40,8 @@ impl State {
                     resolve_target: None,
                     depth_slice: None,
                     ops: Operations {
-                        load: LoadOp::Clear(wgpu::Color { r: 1.0, g: 0.4, b: 0.7, a: 1. }),
-                        store: StoreOp::Store,
+                        load: LoadOp::Clear(wgpu::Color::WHITE),
+                        store: StoreOp::Discard,
                     },
                 })],
                 depth_stencil_attachment: None,
