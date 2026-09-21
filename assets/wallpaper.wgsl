@@ -84,6 +84,7 @@ fn renderCloud(ro: vec3<f32>, rd: vec3<f32>, secs: u32) -> f32 {
 }
 
 const CLOUD_CHANCE: f32 = 0.08;
+const CLOUD_SPEED: f32 = 0.1;
 
 fn renderClouds(uv: vec2<f32>, secs: u32) -> f32 {
     var result: f32 = 0.;
@@ -91,7 +92,7 @@ fn renderClouds(uv: vec2<f32>, secs: u32) -> f32 {
     var rduv: vec2<f32> = uv - 0.8;
     rduv.x *= RESOLUTION.x / RESOLUTION.y;
     rduv *= 0.9;
-    let pos = TIME * 0.1 + 15.;
+    let pos = TIME * CLOUD_SPEED + 15.;
     let rd = normalize(vec3(rduv, 1.));
 
     for (var z: f32 = -20.; z <= -9.; z += 1.) {
@@ -120,7 +121,7 @@ fn renderClouds(uv: vec2<f32>, secs: u32) -> f32 {
 /* GRASS */
 
 fn dirtColor(secs: u32) -> vec4<f32> {
-    return vec4(0.1, 0.6, 0.05, 1.) * max(0.2, sin(f32(secs) * PI / 86400.));
+    return vec4(0.1, 0.65, 0.05, 1.) * max(0.2, sin(f32(secs) * PI / 86400.));
 }
 
 fn grassHeight(x: f32) -> f32 {
@@ -148,12 +149,9 @@ fn renderGrass(secs: u32) -> vec4<f32> {
         if (
             coord.x > grasspos.x + offset &&
             coord.x < grasspos.x + offset + GRASSWIDTH &&
-            coord.y < grasspos.y + GRASSHEIGHT + rand(f32(i) + 2.) * GRASSOFFSETHEIGHT
+            coord.y < grasspos.y + GRASSHEIGHT + rand(f32(i) + 2.) * GRASSOFFSETHEIGHT // randomized height
         ) {
-            var delta = min(coord.x - grasspos.x - offset, grasspos.x + offset + GRASSWIDTH - coord.x);
-            delta = min(delta, 0.001);
-            delta = max(delta, 0.0005);
-            return vec4(0., 0.6 + rand(f32(i) + 3.) * 0.1, 0.1, delta * 1000.) * (0.5 + sin(f32(secs) * PI / 86400.) / 2);
+            return vec4(0., 0.6 + rand(f32(i) + 3.) * 0.1, 0.1, 1.) * (0.5 + sin(f32(secs) * PI / 86400.) / 2);
         }
     }
     return vec4(0.);
@@ -185,7 +183,7 @@ fn main(
 
     let secs: u32 = DATETIME.w;
     // let secs = u32(TIME * 5000. % 86400.);
-    // let secs: u32 = 30000;
+    // let secs: u32 = 80000;
 
 
     let grassheight = grassHeight(coord.x);
